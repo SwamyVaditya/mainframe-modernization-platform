@@ -1,0 +1,18 @@
+# z/OS Working Tree Encoding - Critical for DBB User Build
+# COBOL must be ibm-1047, properties iso8859-1
+
+cobol/*.cbl zos-working-tree-encoding=ibm-1047
+copybook/*.cpy zos-working-tree-encoding=ibm-1047
+jcl/*.jcl zos-working-tree-encoding=ibm-1047
+
+*.properties zos-working-tree-encoding=iso8859-1
+*.groovy zos-working-tree-encoding=iso8859-1
+*.yaml zos-working-tree-encoding=iso8859-1
+*.yml zos-working-tree-encoding=iso8859-1
+*.md zos-working-tree-encoding=iso8859-1
+*.json zos-working-tree-encoding=iso8859-1
+
+# Prevent CRLF issues on Windows
+*.cbl text
+*.cpy text
+*.jcl text

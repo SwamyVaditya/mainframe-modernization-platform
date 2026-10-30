@@ -1,0 +1,43 @@
+name: mainframe-modernization-platform
+version: 1.0.0
+description: 'Production-grade Core Banking Modernization Platform - Enterprise Portfolio'
+author: Mainframe Engineering Team
+
+propertyGroups:
+  - name: local-cobol-development
+    language: cobol
+    libraries:
+      - name: syslib
+        type: local
+        locations:
+          - "copybook"
+
+profiles:
+  - name: dbb-user-build
+    type: dbb
+    settings:
+      command: ". ~/.profile && /usr/lpp/IBM/dbb/bin/groovyz"
+      application: mainframe-modernization-platform
+      buildScriptPath: /z/z78651/work/dbb-zappbuild/build.groovy
+      
+      buildScriptArgs:
+        - "--workspace"
+        - "/z/z78651/work/workspace"
+        - "--application"
+        - "mainframe-modernization-platform"
+        - "--hlq"
+        - "Z78651.BUILD"
+        - "--outDir"
+        - "/z/z78651/work/workspace/logs"
+        - "--propOverwrites"
+        - "buildOrder=cobol,copybook"
+        - "--userBuild"
+        
+      additionalDependencies:
+        - "application-conf/file.properties"
+        - "application-conf/application.properties"
+        - "application-conf/Cobol.properties"
+        - "application-conf/propertyMapping.properties"
+        - "copybook/ACCTREC.cpy"
+        - ".gitattributes"
+        - "zapp.yaml"
