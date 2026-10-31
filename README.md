@@ -177,6 +177,14 @@ tsocmd "LISTCAT LEVEL(IGY)"
 
 ## Author
 
-Mainframe Engineering & Modernization Team - Portfolio project demonstrating DBB User Build + GitHub Actions modernization on IBM Z Xplore.
+**Swamy Vaditya** - Mainframe Modernization Engineer | IBM Z Xplore (Z78651)
 
-**Original work:** ACCTBALA.cbl + ACCTREC.cpy are original production-grade examples, not modified IBM samples.
+Portfolio project demonstrating enterprise-grade DBB User Build + GitHub Actions modernization on IBM Z.
+
+- Original work: ACCTBALA.cbl + ACCTREC.cpy are original production-grade examples (not IBM SAM1 samples)
+- Built on IBM Z Xplore - HLQ Z78651.BUILD
+- Stack: COBOL 6.5.0, VSAM KSDS, DBB 2.0.2.7, zAppBuild 3.14, Z Open Editor 6.9.0, GitHub Actions
+
+**Contact:** [LinkedIn: https://www.linkedin.com/in/swamyvaditya/] | [GitHub: SwamyVaditya] | swamyvaditya@gmail.com
+
+> This repository is part of my mainframe modernization portfolio, showcasing Git-native DevOps transformation of classic COBOL/VSAM to modern CI/CD.
