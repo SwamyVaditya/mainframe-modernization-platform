@@ -1,6 +1,6 @@
 name: mainframe-modernization-platform
 version: 1.0.0
-description: 'Production-grade Core Banking Modernization Platform - Enterprise Portfolio'
+description: 'Production-grade Core Banking Modernization Platform'
 author: Mainframe Engineering Team
 
 propertyGroups:
@@ -30,13 +30,15 @@ profiles:
         - "--outDir"
         - "/z/z78651/work/workspace/logs"
         - "--propOverwrites"
-        - "buildOrder=cobol,copybook"
+        - "buildOrder=Cobol.groovy"
+        - "--verbose"
         - "--userBuild"
         
       additionalDependencies:
         - "application-conf/file.properties"
         - "application-conf/application.properties"
         - "application-conf/Cobol.properties"
+        - "application-conf/datasets.properties"
         - "application-conf/propertyMapping.properties"
         - "copybook/ACCTREC.cpy"
         - ".gitattributes"

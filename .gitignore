@@ -1,0 +1,20 @@
+# VS Code local settings (keep example, ignore real)
+.vscode/settings.json
+.vscode/*.log
+
+# Zowe user configs (contain tokens)
+zowe.config.user.json
+zowe.schema.json
+zowe.config.json
+
+# Build logs (regenerated)
+logs/*.log
+logs/BuildReport.*
+logs/buildList.txt
+
+# DBB work datasets listings
+*.list
+
+# OS
+Thumbs.db
+.DS_Store
