@@ -39,6 +39,14 @@ jobs:
             df -k ~ | head -5
             ls -ld ~/work/workspace/
 
+      - name: Fix line endings for z/OS
+        run: |
+          sudo apt-get install -y dos2unix
+          dos2unix cobol/*.cbl copybook/*.cpy || true
+          # Ensure no CRLF
+          sed -i 's/\r$//' cobol/*.cbl copybook/*.cpy
+          file cobol/*.cbl
+      
       - name: Upload dependencies to USS via native SCP
         run: |
           sudo apt-get update && sudo apt-get install -y sshpass
@@ -66,6 +74,7 @@ jobs:
             set -e
             export HISTFILE=/dev/null
             cd ~/work/workspace/mainframe-modernization-platform
+            for f in cobol/*.cbl copybook/*.cpy; do tr -d '\r' < "$f" > "$f.tmp" && mv "$f.tmp" "$f"; done
             chtag -tc ibm-1047 cobol/*.cbl || true
             chtag -tc ibm-1047 copybook/*.cpy || true
             chtag -tc iso8859-1 application-conf/*.properties || true
