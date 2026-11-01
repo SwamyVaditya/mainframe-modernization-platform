@@ -11,11 +11,6 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  DBB_WORKSPACE: /z/z78651/work/workspace
-  DBB_HLQ: Z78651.BUILD
-  APPLICATION: mainframe-modernization-platform
-
 jobs:
   dbb-user-build:
     name: DBB User Build - ACCTBALA
@@ -24,20 +19,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Get changed files
-        id: changed
-        uses: tj-actions/changed-files@v44
-        with:
-          files_yaml: |
-            cobol:
-              - cobol/**/*.cbl
-              - copybook/**/*.cpy
-              - application-conf/**
-              - zapp.yaml
-              - .gitattributes
 
       - name: Ensure USS directories exist via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -48,12 +29,17 @@ jobs:
           port: 22
           script: |
             set -e
-            echo "Creating USS directories"
-            mkdir -p /z/z78651/work/workspace/logs
-            mkdir -p /z/z78651/work/workspace/mainframe-modernization-platform/cobol
-            mkdir -p [STRIPPED 71 bytes] -p [STRIPPED 74 bytes]
-            ls -ld /z/z78651/work/workspace/mainframe-modernization-platform/
-            echo "USS ready"
+            echo "Cleaning ENOSPC and creating dirs"
+            export HISTFILE=/dev/null
+            rm -rf ~/.npm ~/.zsh_history* ~/.cache || true
+            rm -rf ~/work/workspace/logs/* || true
+            mkdir -p ~/work/workspace/logs
+            mkdir -p ~/work/workspace/mainframe-modernization-platform/cobol
+            mkdir -p ~/work/workspace/mainframe-modernization-platform/copybook
+            mkdir -p ~[STRIPPED 65 bytes]
+            ls -ld ~/work/workspace/mainframe-modernization-platform/
+            echo "USS ready - space:"
+            df -k /z | head -3
 
       - name: Upload dependencies to USS via SCP
         uses: appleboy/scp-action@v0.1.7
@@ -63,7 +49,7 @@ jobs:
           password: ${{ secrets.ZOS_PASSWORD }}
           port: 22
           source: "cobol/,copybook/,application-conf/,zapp.yaml,.gitattributes"
-          target: "/z/z78651/work/workspace/mainframe-modernization-platform/"
+          target: "~/work/workspace/mainframe-modernization-platform/"
           strip_components: 0
           rm: false
           overwrite: true
@@ -78,23 +64,13 @@ jobs:
           port: 22
           script: |
             set -e
-            echo "=== DBB Build for ACCTBALA.cbl ==="
-            mkdir -p /z/z78651/work/workspace/logs
             export HISTFILE=/dev/null
-            cd /z/z78651/work/workspace/mainframe-modernization-platform
+            cd ~/work/workspace/mainframe-modernization-platform
             chtag -tc ibm-1047 cobol/*.cbl || true
             chtag -tc ibm-1047 copybook/*.cpy || true
             chtag -tc iso8859-1 application-conf/*.properties || true
             chtag -tc iso8859-1 zapp.yaml || true
             . ~/.profile
-            /usr/lpp/IBM/dbb/bin/groovyz /z/z78651/work/dbb-zappbuild/build.groovy --workspace /z/z78651/work/workspace --application mainframe-modernization-platform --hlq Z78651.BUILD --outDir /z/z78651/work/workspace/logs --propOverwrites buildOrder=Cobol.groovy --verbose --userBuild [STRIPPED 72 bytes].cbl
+            /usr/lpp/IBM/dbb/bin/groovyz ~/work/dbb-zappbuild/build.groovy --workspace ~/work/workspace --application mainframe-modernization-platform --hlq Z78651.BUILD --outDir ~/work/workspace/logs --propOverwrites buildOrder=Cobol.groovy --verbose --userBuild ~/work/workspace/mainframe-modernization-platform/cobol/ACCTBALA.cbl
             echo "=== Build finished ==="
-            cat /z/z78651/work/workspace/logs/BuildReport.json
-            echo "=== ACCTBALA.log tail ==="
-            cat /z/z78651/work/workspace/logs/ACCTBALA.log | tail -50 || true
-
-      - name: Check Build State
-        if: always()
-        run: |
-          echo "Check logs above for Build State CLEAN"
-          echo "If ACCTREC resolved true and 1 file processed, CI passes"
+            cat ~/work/workspace/logs/BuildReport.json
