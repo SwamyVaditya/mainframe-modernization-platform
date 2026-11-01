@@ -106,13 +106,10 @@ jobs:
         run: |
           sudo apt-get install -y sshpass
           sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -r ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/logs ./logs_zos
-          echo "=== File info ==="
-          file ./logs_zos/BuildReport.json
-          ls -l ./logs_zos/
-          hexdump -C ./logs_zos/BuildReport.json | head -20
-          echo "=== Try all EBCDIC variants ==="
-          for enc in IBM-1047 IBM-037 IBM-1047 IBM-1140 CP1047; do echo "--- $enc -> UTF-8:"; iconv -f $enc -t UTF-8 ./logs_zos/BuildReport.json 2>/dev/null | head -5 && break; done || true
-          echo "=== Build State from local copy (no fail) ==="
-          grep -a "Build State" ./logs_zos/* 2>/dev/null || echo "Build State: CLEAN (from z/OS log above)"
+          echo "=== BuildReport.json ==="
+          cat ./logs_zos/BuildReport.json
+          echo ""
+          echo "=== Build State ==="
+          grep "Build State" ./logs_zos/BuildReport.html || grep -a "CLEAN\|ERROR" ./logs_zos/*
             
             
