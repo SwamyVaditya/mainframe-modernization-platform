@@ -74,12 +74,23 @@ jobs:
             set -e
             export HISTFILE=/dev/null
             cd ~/work/workspace/mainframe-modernization-platform
-            for f in cobol/*.cbl copybook/*.cpy; do tr -d '\r' < "$f" > "$f.tmp" && mv "$f.tmp" "$f"; done
-            chtag -tc ibm-1047 cobol/*.cbl || true
-            chtag -tc ibm-1047 copybook/*.cpy || true
+            
+            # Fix encoding: UTF-8 -> IBM-1047 (what Z Open Editor does)
+            for f in cobol/*.cbl copybook/*.cpy; do
+              [ -f "$f" ] && {
+                tr -d '\r' < "$f" > "$f.tmp1"
+                iconv -f UTF-8 -t IBM-1047 "$f.tmp1" > "$f.tmp2" 2>/dev/null || cp "$f.tmp1" "$f.tmp2"
+                mv "$f.tmp2" "$f"
+                rm -f "$f.tmp1"
+                chtag -b -tc ibm-1047 "$f"
+                chtag -p "$f"
+              }
+            done
+            
+            # Properties stay iso8859-1
             chtag -tc iso8859-1 application-conf/*.properties || true
             chtag -tc iso8859-1 zapp.yaml || true
+            
             . ~/.profile
             /usr/lpp/IBM/dbb/bin/groovyz ~/work/dbb-zappbuild/build.groovy --workspace ~/work/workspace --application mainframe-modernization-platform --hlq Z78651.BUILD --outDir ~/work/workspace/logs --propOverwrites buildOrder=Cobol.groovy --verbose --userBuild ~/work/workspace/mainframe-modernization-platform/cobol/ACCTBALA.cbl
-            echo "=== Build finished ==="
             cat ~/work/workspace/logs/BuildReport.json
