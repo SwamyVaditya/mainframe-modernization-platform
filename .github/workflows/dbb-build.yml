@@ -73,6 +73,13 @@ jobs:
           script: |
             set -e
             export HISTFILE=/dev/null
+
+            # CLEANUP - critical on Xplore
+            rm -rf ~/.npm ~/.zsh_history* ~/.node* ~/work/.npm* 2>/dev/null || true
+            rm -rf ~/work/workspace/logs/* 2>/dev/null || true
+            mkdir -p ~/work/workspace/logs
+            df -h ~ || true
+
             cd ~/work/workspace/mainframe-modernization-platform
             
             # Fix encoding: UTF-8 -> IBM-1047 (what Z Open Editor does)
