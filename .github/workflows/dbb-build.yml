@@ -39,19 +39,21 @@ jobs:
             df -k ~ | head -5
             ls -ld ~/work/workspace/
 
-      - name: Upload dependencies to USS via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.ZOS_HOST }}
-          username: ${{ secrets.ZOS_USER }}
-          password: ${{ secrets.ZOS_PASSWORD }}
-          port: 22
-          source: "cobol/,copybook/,application-conf/,zapp.yaml,.gitattributes"
-          target: "~/work/workspace/mainframe-modernization-platform/"
-          strip_components: 0
-          rm: false
-          overwrite: false
-          debug: false
+      - name: Upload dependencies to USS via native SCP
+        run: |
+          sudo apt-get update && sudo apt-get install -y sshpass
+          export HISTFILE=/dev/null
+          # Create known_hosts
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.ZOS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
+          
+          # SCP each dir/file individually (no tar)
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -r -o StrictHostKeyChecking=no cobol ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -r -o StrictHostKeyChecking=no copybook ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -r -o StrictHostKeyChecking=no application-conf ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no zapp.yaml .gitattributes ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
+          echo "SCP done"
 
       - name: Run DBB User Build via SSH
         uses: appleboy/ssh-action@v1.0.3
