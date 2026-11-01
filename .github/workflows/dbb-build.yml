@@ -29,17 +29,15 @@ jobs:
           port: 22
           script: |
             set -e
-            echo "Cleaning ENOSPC and creating dirs"
+            echo "Cleaning ENOSPC"
             export HISTFILE=/dev/null
             rm -rf ~/.npm ~/.zsh_history* ~/.cache || true
-            rm -rf ~/work/workspace/logs/* || true
+            rm -rf ~/work/workspace/logs || true
             mkdir -p ~/work/workspace/logs
-            mkdir -p ~/work/workspace/mainframe-modernization-platform/cobol
-            mkdir -p ~/work/workspace/mainframe-modernization-platform/copybook
-            mkdir -p ~[STRIPPED 65 bytes]
-            ls -ld ~/work/workspace/mainframe-modernization-platform/
-            echo "USS ready - space:"
-            df -k /z | head -3
+            mkdir -p ~/work/workspace/mainframe-modernization-platform
+            echo "USS ready"
+            df -k ~ | head -5
+            ls -ld ~/work/workspace/
 
       - name: Upload dependencies to USS via SCP
         uses: appleboy/scp-action@v0.1.7
