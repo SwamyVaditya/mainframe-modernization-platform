@@ -37,18 +37,25 @@ jobs:
               - copybook/**/*.cpy
               - application-conf/**
               - zapp.yaml
+              - .gitattributes
 
-      - name: Setup SSH key
-        if: steps.changed.outputs.cobol_any_changed == 'true' || github.event_name == 'workflow_dispatch'
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa || true
-          chmod 600 ~/.ssh/id_rsa || true
-          ssh-keyscan -H ${{ secrets.ZOS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
-          echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
+      - name: Ensure USS directories exist via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ZOS_HOST }}
+          username: ${{ secrets.ZOS_USER }}
+          password: ${{ secrets.ZOS_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+            echo "Creating USS directories"
+            mkdir -p /z/z78651/work/workspace/logs
+            mkdir -p /z/z78651/work/workspace/mainframe-modernization-platform/cobol
+            mkdir -p [STRIPPED 71 bytes] -p [STRIPPED 74 bytes]
+            ls -ld /z/z78651/work/workspace/mainframe-modernization-platform/
+            echo "USS ready"
 
       - name: Upload dependencies to USS via SCP
-        if: steps.changed.outputs.cobol_any_changed == 'true' || github.event_name == 'workflow_dispatch'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -56,13 +63,13 @@ jobs:
           password: ${{ secrets.ZOS_PASSWORD }}
           port: 22
           source: "cobol/,copybook/,application-conf/,zapp.yaml,.gitattributes"
-          target: "/z/z78651/work/workspace/${{ env.APPLICATION }}/"
+          target: "/z/z78651/work/workspace/mainframe-modernization-platform/"
           strip_components: 0
           rm: false
           overwrite: true
+          debug: true
 
       - name: Run DBB User Build via SSH
-        if: steps.changed.outputs.cobol_any_changed == 'true' || github.event_name == 'workflow_dispatch'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -72,20 +79,22 @@ jobs:
           script: |
             set -e
             echo "=== DBB Build for ACCTBALA.cbl ==="
-            mkdir -p ${{ env.DBB_WORKSPACE }}/logs
+            mkdir -p /z/z78651/work/workspace/logs
             export HISTFILE=/dev/null
-            cd ${{ env.DBB_WORKSPACE }}/${{ env.APPLICATION }}
+            cd /z/z78651/work/workspace/mainframe-modernization-platform
             chtag -tc ibm-1047 cobol/*.cbl || true
             chtag -tc ibm-1047 copybook/*.cpy || true
             chtag -tc iso8859-1 application-conf/*.properties || true
             chtag -tc iso8859-1 zapp.yaml || true
             . ~/.profile
-            /usr/lpp/IBM/dbb/bin/groovyz /z/z78651/work/dbb-zappbuild/build.groovy --workspace ${{ env.DBB_WORKSPACE }} --application ${{ env.APPLICATION }} --hlq ${{ env.DBB_HLQ }} --outDir ${{ env.DBB_WORKSPACE }}/logs --propOverwrites buildOrder=Cobol.groovy --verbose --userBuild ${{ env.DBB_WORKSPACE }}/${{ env.APPLICATION }}/cobol/ACCTBALA.cbl
+            /usr/lpp/IBM/dbb/bin/groovyz /z/z78651/work/dbb-zappbuild/build.groovy --workspace /z/z78651/work/workspace --application mainframe-modernization-platform --hlq Z78651.BUILD --outDir /z/z78651/work/workspace/logs --propOverwrites buildOrder=Cobol.groovy --verbose --userBuild [STRIPPED 72 bytes].cbl
             echo "=== Build finished ==="
-            cat ${{ env.DBB_WORKSPACE }}/logs/BuildReport.json || true
-            ls -lh ${{ env.DBB_WORKSPACE }}/logs/
+            cat /z/z78651/work/workspace/logs/BuildReport.json
+            echo "=== ACCTBALA.log tail ==="
+            cat /z/z78651/work/workspace/logs/ACCTBALA.log | tail -50 || true
 
       - name: Check Build State
         if: always()
         run: |
-          echo "If Build State is CLEAN with 1 file, CI passes"
+          echo "Check logs above for Build State CLEAN"
+          echo "If ACCTREC resolved true and 1 file processed, CI passes"
