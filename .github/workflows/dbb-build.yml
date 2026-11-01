@@ -73,16 +73,17 @@ jobs:
           script: |
             set -e
             export HISTFILE=/dev/null
-
-            # CLEANUP - critical on Xplore
-            rm -rf ~/.npm ~/.zsh_history* ~/.node* ~/work/.npm* 2>/dev/null || true
-            rm -rf ~/work/workspace/logs/* 2>/dev/null || true
+            unsetopt NOMATCH 2>/dev/null || setopt +o nomatch 2>/dev/null || true
+            
+            # CLEANUP - Xplore quota is tiny
+            rm -rf ~/.npm 2>/dev/null; rm -f ~/.zsh_history* 2>/dev/null || true
+            rm -rf ~/work/workspace/logs 2>/dev/null || true
             mkdir -p ~/work/workspace/logs
-            df -h ~ || true
-
+            df -k ~ || true
+            
             cd ~/work/workspace/mainframe-modernization-platform
             
-            # Fix encoding: UTF-8 -> IBM-1047 (what Z Open Editor does)
+            # UTF-8 -> IBM-1047 conversion
             for f in cobol/*.cbl copybook/*.cpy; do
               [ -f "$f" ] && {
                 tr -d '\r' < "$f" > "$f.tmp1"
@@ -90,14 +91,14 @@ jobs:
                 mv "$f.tmp2" "$f"
                 rm -f "$f.tmp1"
                 chtag -tc ibm-1047 "$f"
-                chtag -p "$f"
               }
             done
             
-            # Properties stay iso8859-1
             chtag -tc iso8859-1 application-conf/*.properties || true
             chtag -tc iso8859-1 zapp.yaml || true
             
             . ~/.profile
             /usr/lpp/IBM/dbb/bin/groovyz ~/work/dbb-zappbuild/build.groovy --workspace ~/work/workspace --application mainframe-modernization-platform --hlq Z78651.BUILD --outDir ~/work/workspace/logs --propOverwrites buildOrder=Cobol.groovy --verbose --userBuild ~/work/workspace/mainframe-modernization-platform/cobol/ACCTBALA.cbl
-            cat ~/work/workspace/logs/BuildReport.json
+            
+            echo "=== BuildReport (converted) ==="
+            iconv -f IBM-1047 -t UTF-8 ~/work/workspace/logs/BuildReport.json 2>/dev/null | head -100 || cat ~/work/workspace/logs/BuildReport.json
