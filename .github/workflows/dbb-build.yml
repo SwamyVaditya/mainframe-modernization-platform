@@ -50,8 +50,8 @@ jobs:
           target: "~/work/workspace/mainframe-modernization-platform/"
           strip_components: 0
           rm: false
-          overwrite: true
-          debug: true
+          overwrite: false
+          debug: false
 
       - name: Run DBB User Build via SSH
         uses: appleboy/ssh-action@v1.0.3
