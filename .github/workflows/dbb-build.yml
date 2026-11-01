@@ -82,7 +82,7 @@ jobs:
                 iconv -f UTF-8 -t IBM-1047 "$f.tmp1" > "$f.tmp2" 2>/dev/null || cp "$f.tmp1" "$f.tmp2"
                 mv "$f.tmp2" "$f"
                 rm -f "$f.tmp1"
-                chtag -b -tc ibm-1047 "$f"
+                chtag -tc ibm-1047 "$f"
                 chtag -p "$f"
               }
             done
