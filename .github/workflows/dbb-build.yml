@@ -101,4 +101,8 @@ jobs:
             /usr/lpp/IBM/dbb/bin/groovyz ~/work/dbb-zappbuild/build.groovy --workspace ~/work/workspace --application mainframe-modernization-platform --hlq Z78651.BUILD --outDir ~/work/workspace/logs --propOverwrites buildOrder=Cobol.groovy --verbose --userBuild ~/work/workspace/mainframe-modernization-platform/cobol/ACCTBALA.cbl
             
             echo "=== BuildReport (converted) ==="
-            iconv -f IBM-1047 -t UTF-8 ~/work/workspace/logs/BuildReport.json 2>/dev/null | head -100 || cat ~/work/workspace/logs/BuildReport.json
+            export _BPXK_AUTOCVT=OFF
+            cat ~/work/workspace/logs/BuildReport.json | head -100
+            # Or properly:
+            chtag -b ~/work/workspace/logs/BuildReport.json 2>/dev/null || true
+            cat ~/work/workspace/logs/BuildReport.json
