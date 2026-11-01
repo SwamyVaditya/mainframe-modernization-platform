@@ -114,6 +114,6 @@ jobs:
           echo "=== Build List ==="
           iconv -f IBM-1047 -t UTF-8 ./logs_zos/buildList.txt 2>/dev/null || cat ./logs_zos/buildList.txt
           echo ""
-          echo "=== ACCTBALA.log ==="
-          iconv -f IBM-1047 -t UTF-8 ./logs_zos/ACCTBALA.log 2>/dev/null | head -30 || cat ./logs_zos/ACCTBALA.log | head -30
+          echo "=== ACCTBALA.log (cleaned) ==="
+          iconv -f IBM-1047 -t UTF-8 ./logs_zos/ACCTBALA.log 2>/dev/null | tr -d '\f\r' | tr -s ' ' | sed 's/[^[:print:]\t]//g' | head -50
             
