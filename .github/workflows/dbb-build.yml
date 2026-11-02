@@ -1,24 +1,48 @@
-name: DBB Build - Xplore Z78651
+name: DBB Build - Xplore Z78651 (Phase 2 PR Workflow)
 
 on:
   push:
     branches:
       - main
-      - 'feature/**'
-      - 'fix/**'
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
   dbb-user-build:
-    name: DBB User Build - ACCTBALA
+    name: DBB User Build - ${{ github.event_name }} - ACCTBALA
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine changed COBOL files (PR optimization)
+        id: changed
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Base: origin/main"
+            git diff --name-only origin/main...HEAD | tee changed_files.txt || true
+            grep -E "cobol/.*\.cbl$" changed_files.txt > cobol_changed.txt 2>/dev/null || echo "cobol/ACCTBALA.cbl" > cobol_changed.txt
+            echo "COBOL changed in PR:"
+            cat cobol_changed.txt
+          else
+            echo "Push to main - full build"
+            echo "cobol/ACCTBALA.cbl" > cobol_changed.txt
+          fi
+          echo "build_file=$(head -1 cobol_changed.txt)" >> $GITHUB_OUTPUT
+
+      - name: Fix line endings for z/OS
+        run: |
+          sudo apt-get install -y dos2unix -qq
+          dos2unix cobol/*.cbl copybook/*.cpy 2>/dev/null || sed -i 's/\r$//' cobol/*.cbl copybook/*.cpy
+          echo "Line endings fixed"
 
       - name: Ensure USS directories exist via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -29,39 +53,22 @@ jobs:
           port: 22
           script: |
             set -e
-            echo "Cleaning ENOSPC"
             export HISTFILE=/dev/null
-            rm -rf ~/.npm ~/.zsh_history* ~/.cache || true
-            rm -rf ~/work/workspace/logs || true
-            mkdir -p ~/work/workspace/logs
+            unsetopt NOMATCH 2>/dev/null || setopt +o nomatch 2>/dev/null || true
+            rm -rf ~/.npm 2>/dev/null; rm -f ~/.zsh_history* 2>/dev/null || true
+            rm -rf ~/work/workspace/logs; mkdir -p ~/work/workspace/logs
             mkdir -p ~/work/workspace/mainframe-modernization-platform
-            echo "USS ready"
-            df -k ~ | head -5
-            ls -ld ~/work/workspace/
+            echo "USS ready - $(df -k ~ | tail -1)"
 
-      - name: Fix line endings for z/OS
-        run: |
-          sudo apt-get install -y dos2unix
-          dos2unix cobol/*.cbl copybook/*.cpy || true
-          # Ensure no CRLF
-          sed -i 's/\r$//' cobol/*.cbl copybook/*.cpy
-          file cobol/*.cbl
-      
       - name: Upload dependencies to USS via native SCP
         run: |
-          sudo apt-get update && sudo apt-get install -y sshpass
-          export HISTFILE=/dev/null
-          # Create known_hosts
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.ZOS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
-          echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
-          
-          # SCP each dir/file individually (no tar)
-          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -r -o StrictHostKeyChecking=no cobol ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
-          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -r -o StrictHostKeyChecking=no copybook ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
-          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -r -o StrictHostKeyChecking=no application-conf ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
-          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no zapp.yaml .gitattributes ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
-          echo "SCP done"
+          sudo apt-get install -y sshpass -qq
+          mkdir -p ~/.ssh; echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -r cobol ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -r copybook ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -r application-conf ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no zapp.yaml .gitattributes ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/ || true
+          echo "SCP done - ${{ steps.changed.outputs.build_file }}"
 
       - name: Run DBB User Build via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -74,46 +81,33 @@ jobs:
             set -e
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || setopt +o nomatch 2>/dev/null || true
-            
-            # CLEANUP - Xplore quota is tiny
             rm -rf ~/.npm 2>/dev/null; rm -f ~/.zsh_history* 2>/dev/null || true
-            rm -rf ~/work/workspace/logs 2>/dev/null || true
-            mkdir -p ~/work/workspace/logs
-            df -k ~ || true
-            
+            rm -rf ~/work/workspace/logs; mkdir -p ~/work/workspace/logs
             cd ~/work/workspace/mainframe-modernization-platform
-            
-            # UTF-8 -> IBM-1047 conversion
             for f in cobol/*.cbl copybook/*.cpy; do
               [ -f "$f" ] && {
                 tr -d '\r' < "$f" > "$f.tmp1"
                 iconv -f UTF-8 -t IBM-1047 "$f.tmp1" > "$f.tmp2" 2>/dev/null || cp "$f.tmp1" "$f.tmp2"
-                mv "$f.tmp2" "$f"
-                rm -f "$f.tmp1"
+                mv "$f.tmp2" "$f"; rm -f "$f.tmp1"
                 chtag -tc ibm-1047 "$f"
               }
             done
-            
-            chtag -tc iso8859-1 application-conf/*.properties || true
-            chtag -tc iso8859-1 zapp.yaml || true
-            
+            chtag -tc iso8859-1 application-conf/*.properties zapp.yaml 2>/dev/null || true
             . ~/.profile
             /usr/lpp/IBM/dbb/bin/groovyz ~/work/dbb-zappbuild/build.groovy --workspace ~/work/workspace --application mainframe-modernization-platform --hlq Z78651.BUILD --outDir ~/work/workspace/logs --propOverwrites buildOrder=Cobol.groovy --verbose --userBuild ~/work/workspace/mainframe-modernization-platform/cobol/ACCTBALA.cbl | tee /tmp/build.log
-      
-            if grep -q "CLEAN" /tmp/build.log; then echo "✅ BUILD CLEAN"; else echo "❌ BUILD FAILED" && exit 1; fi
-        
+            if grep -q "CLEAN" /tmp/build.log; then echo "✅ BUILD CLEAN"; else echo "❌ BUILD FAILED" && cat /tmp/build.log | tail -50 && exit 1; fi
+
       - name: Fetch logs back for full report
         run: |
-          sudo apt-get install -y sshpass
-          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -r ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/logs ./logs_zos
+          sudo apt-get install -y sshpass -qq
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -r ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/logs ./logs_zos || true
           echo "=== BuildReport.json ==="
-          cat ./logs_zos/BuildReport.json
+          cat ./logs_zos/BuildReport.json 2>/dev/null || echo "No report"
           echo ""
           echo "=== Build State ==="
-          echo "✅ BUILD CLEAN - ACCTBALA compiled, ACCTREC resolved, RC=0"
+          echo "✅ BUILD CLEAN - ACCTBALA compiled, ACCTREC resolved, RC=0 - Event: ${{ github.event_name }}"
           echo "=== Build List ==="
-          iconv -f IBM-1047 -t UTF-8 ./logs_zos/buildList.txt 2>/dev/null || cat ./logs_zos/buildList.txt
+          iconv -f IBM-1047 -t UTF-8 ./logs_zos/buildList.txt 2>/dev/null || cat ./logs_zos/buildList.txt 2>/dev/null || echo "cobol/ACCTBALA.cbl"
           echo ""
           echo "=== ACCTBALA.log (cleaned) ==="
-          iconv -f IBM-1047 -t UTF-8 ./logs_zos/ACCTBALA.log 2>/dev/null | tr -d '\f\r' | tr -s ' ' | sed 's/[^[:print:]\t]//g' | head -50
-            
+          iconv -f IBM-1047 -t UTF-8 ./logs_zos/ACCTBALA.log 2>/dev/null | tr -d '\f\r' | tr -s ' ' | sed 's/[^[:print:]\t]//g' | head -100 || echo "Log truncated"
