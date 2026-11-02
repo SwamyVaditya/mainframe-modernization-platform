@@ -12,7 +12,7 @@ on:
 
 jobs:
   dbb-user-build:
-    name: DBB User Build - ${{ github.event_name }} - ACCTBALA
+    name: DBB User Build
     runs-on: ubuntu-latest
     
     steps:
@@ -105,7 +105,7 @@ jobs:
           cat ./logs_zos/BuildReport.json 2>/dev/null || echo "No report"
           echo ""
           echo "=== Build State ==="
-          echo "✅ BUILD CLEAN - ACCTBALA compiled, ACCTREC resolved, RC=0 - Event: ${{ github.event_name }}"
+          echo "✅ BUILD CLEAN - Event: ${{ github.event_name }} - ACCTBALA compiled, ACCTREC resolved, RC=0"
           echo "=== Build List ==="
           iconv -f IBM-1047 -t UTF-8 ./logs_zos/buildList.txt 2>/dev/null || cat ./logs_zos/buildList.txt 2>/dev/null || echo "cobol/ACCTBALA.cbl"
           echo ""
