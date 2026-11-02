@@ -48,4 +48,5 @@
            END-IF
 
            CLOSE ACCT-FILE
+           DISPLAY 'TEST PR ... '
            GOBACK.
