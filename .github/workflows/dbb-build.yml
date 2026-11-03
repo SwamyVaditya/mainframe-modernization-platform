@@ -21,7 +21,7 @@ jobs:
       has_changes: ${{ steps.changes.outputs.has_changes }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # pin: 11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Detect changed COBOL files
         id: changes
@@ -53,12 +53,12 @@ jobs:
     if: ${{ needs.changed-files.outputs.has_changes == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # pin: 11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
       - name: SonarQube Scan - COBOL
-        uses: sonarsource/sonarqube-scan-action@a32a4ac1a6d2b9aa1d4f93ae5a0f5b3da67d64dcd # pin v3
+        uses: sonarsource/sonarqube-scan-action@a32a4ac1a6d2b9aa1d4f93ae5a0f5b3da67d64dcd
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -73,7 +73,7 @@ jobs:
             -Dsonar.qualitygate.wait=true
 
       - name: Check Quality Gate
-        uses: sonarsource/sonarqube-quality-gate-action@055d111fbd9bdf3d4b1d8f6bb8db6ae3d9f9d2f06b # pin
+        uses: sonarsource/sonarqube-quality-gate-action@055d111fbd9bdf3d4b1d8f6bb8db6ae3d9f9d2f06b
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -85,10 +85,12 @@ jobs:
     if: ${{ needs.changed-files.outputs.has_changes == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # pin: 11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Secrets Scanning - Gitleaks
-        uses: gitleaks/gitleaks-action@v2 # pin: ff98106e7d6b1be9d6c2d4661b4309a3a32cf14
+        uses: gitleaks/gitleaks-action@ff98106e7d6b1be9d6c2d4661b4309a3a32cf14
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   dbb-build:
     name: DBB User Build - Production (Incremental + Metadata Store)
@@ -97,10 +99,10 @@ jobs:
     if: ${{ needs.changed-files.outputs.has_changes == 'true' && (success() || needs.sonar-scan.result == 'skipped') }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: DBB Build on 【entity-IBM¦canonical_name=IBM】 Z Xplore (Production)
-        uses: appleboy/ssh-action@ac43ffaeeb0aabf14e3bb6f7a7c9d1db4a0a9cba1b0d # pin v1.0.3
+      - name: DBB Build on IBM Z Xplore (Production)
+        uses: appleboy/ssh-action@ac43ffaeeb0aabf14e3bb6f7a7c9d1db4a0a9cba1b0d
         with:
           host: ${{ secrets.ZOS_HOST }}
           username: ${{ secrets.ZOS_USER }}
@@ -112,7 +114,7 @@ jobs:
             unsetopt NOMATCH 2>/dev/null || true
             export _BPXK_AUTOCVT=ON
             export PATH=$HOME/.local/bin:$PATH
-            echo "=== Production DBB Build - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }} ==="
+            echo "=== Production DBB Build ==="
             mkdir -p ~/work/workspace
             cd ~/work/workspace
             if [ ! -d "mainframe-modernization-platform" ]; then
@@ -128,7 +130,6 @@ jobs:
               "buildResult": "CLEAN"
             }
             EOF
-            cat BuildReport.json
             mkdir -p build_artifacts
             cp BuildReport.json build_artifacts/
 
@@ -145,7 +146,7 @@ jobs:
           ls -l ./build_artifacts/
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@50769540e7f4bd5dd0b088e2f4abb7d38a487756 # pin v4
+        uses: actions/upload-artifact@50769540e7f4bd5dd0b088e2f4abb7d38a487756
         with:
           name: core-banking-build-${{ env.BUILD_VERSION }}
           path: build_artifacts/
@@ -158,7 +159,7 @@ jobs:
     if: ${{ needs.dbb-build.result == 'success' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Run ZUnit Tests on Xplore
         uses: appleboy/ssh-action@ac43ffaeeb0aabf14e3bb6f7a7c9d1db4a0a9cba1b0d
@@ -171,12 +172,10 @@ jobs:
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
             echo "=== ZUnit Tests - ACCTBALA ==="
-            echo "ZUnit tests executed: 2 tests, 0 failures"
 
       - name: Publish Test Results
         run: |
           echo "## ZUnit Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "- ACCTBALA_ZUNIT: PASS (2 tests)" >> $GITHUB_STEP_SUMMARY
 
   build-summary:
     name: Production Build Summary
@@ -186,4 +185,4 @@ jobs:
     steps:
       - name: Summary
         run: |
-          echo "## Production Build - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "## Production Build" >> $GITHUB_STEP_SUMMARY
