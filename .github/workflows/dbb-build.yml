@@ -22,7 +22,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-
       - name: Detect changed COBOL files
         id: changes
         run: |
@@ -56,7 +55,6 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-
       - name: SonarQube Scan - COBOL
         uses: sonarsource/sonarqube-scan-action@a32a4ac1a6d2b9aa1d4f93ae5a0f5b3da67d64dcd
         env:
@@ -71,7 +69,6 @@ jobs:
             -Dsonar.cobol.file.suffixes=cbl,cob
             -Dsonar.sourceEncoding=IBM1047
             -Dsonar.qualitygate.wait=true
-
       - name: Check Quality Gate
         uses: sonarsource/sonarqube-quality-gate-action@055d111fbd9bdf3d4b1d8f6bb8db6ae3d9f9d2f06b
         timeout-minutes: 5
@@ -86,7 +83,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-
       - name: Secrets Scanning - Gitleaks
         uses: gitleaks/gitleaks-action@ff98106e7d6b1be9d6c2d4661b4309a3a32cf14
         env:
@@ -100,7 +96,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-
       - name: DBB Build on IBM Z Xplore (Production)
         uses: appleboy/ssh-action@ac43ffaeeb0aabf14e3bb6f7a7c9d1db4a0a9cba1b0d
         with:
@@ -132,7 +127,6 @@ jobs:
             EOF
             mkdir -p build_artifacts
             cp BuildReport.json build_artifacts/
-
       - name: Fetch Build Artifacts from USS
         env:
           ZOS_HOST: ${{ secrets.ZOS_HOST }}
@@ -144,7 +138,6 @@ jobs:
           echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
           sshpass -p "$ZOS_PASSWORD" scp -o StrictHostKeyChecking=no -r $ZOS_USER@$ZOS_HOST:~/work/workspace/mainframe-modernization-platform/build_artifacts ./build_artifacts || true
           ls -l ./build_artifacts/
-
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@50769540e7f4bd5dd0b088e2f4abb7d38a487756
         with:
@@ -160,7 +153,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-
       - name: Run ZUnit Tests on Xplore
         uses: appleboy/ssh-action@ac43ffaeeb0aabf14e3bb6f7a7c9d1db4a0a9cba1b0d
         with:
@@ -172,7 +164,6 @@ jobs:
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
             echo "=== ZUnit Tests - ACCTBALA ==="
-
       - name: Publish Test Results
         run: |
           echo "## ZUnit Test Results" >> $GITHUB_STEP_SUMMARY
