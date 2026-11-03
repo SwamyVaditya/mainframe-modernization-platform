@@ -21,7 +21,7 @@ jobs:
       has_changes: ${{ steps.changes.outputs.has_changes }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@v4
       - name: Detect changed COBOL files
         id: changes
         run: |
@@ -52,11 +52,11 @@ jobs:
     if: ${{ needs.changed-files.outputs.has_changes == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: SonarQube Scan - COBOL
-        uses: sonarsource/sonarqube-scan-action@a32a4ac1a6d2b9aa1d4f93ae5a0f5b3da67d64dcd
+        uses: sonarsource/sonarqube-scan-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -70,7 +70,7 @@ jobs:
             -Dsonar.sourceEncoding=IBM1047
             -Dsonar.qualitygate.wait=true
       - name: Check Quality Gate
-        uses: sonarsource/sonarqube-quality-gate-action@055d111fbd9bdf3d4b1d8f6bb8db6ae3d9f9d2f06b
+        uses: sonarsource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -82,9 +82,9 @@ jobs:
     if: ${{ needs.changed-files.outputs.has_changes == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@v4
       - name: Secrets Scanning - Gitleaks
-        uses: gitleaks/gitleaks-action@ff98106e7d6b1be9d6c2d4661b4309a3a32cf14
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -95,7 +95,7 @@ jobs:
     if: ${{ needs.changed-files.outputs.has_changes == 'true' && (success() || needs.sonar-scan.result == 'skipped') }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@v4
       - name: DBB Build on IBM Z Xplore (Production)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -139,7 +139,7 @@ jobs:
           sshpass -p "$ZOS_PASSWORD" scp -o StrictHostKeyChecking=no -r $ZOS_USER@$ZOS_HOST:~/work/workspace/mainframe-modernization-platform/build_artifacts ./build_artifacts || true
           ls -l ./build_artifacts/
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@50769540e7f4bd5dd0b088e2f4abb7d38a487756
+        uses: actions/upload-artifact@v4
         with:
           name: core-banking-build-${{ env.BUILD_VERSION }}
           path: build_artifacts/
@@ -152,7 +152,7 @@ jobs:
     if: ${{ needs.dbb-build.result == 'success' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@v4
       - name: Run ZUnit Tests on Xplore
         uses: appleboy/ssh-action@v1.0.3
         with:
