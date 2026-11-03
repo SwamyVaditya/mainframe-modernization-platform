@@ -97,7 +97,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: DBB Build on IBM Z Xplore (Production)
-        uses: appleboy/ssh-action@ac43ffaeeb0aabf14e3bb6f7a7c9d1db4a0a9cba1b0d
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
           username: ${{ secrets.ZOS_USER }}
@@ -154,7 +154,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Run ZUnit Tests on Xplore
-        uses: appleboy/ssh-action@ac43ffaeeb0aabf14e3bb6f7a7c9d1db4a0a9cba1b0d
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
           username: ${{ secrets.ZOS_USER }}
