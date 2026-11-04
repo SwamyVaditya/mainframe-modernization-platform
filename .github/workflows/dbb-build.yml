@@ -64,9 +64,9 @@ jobs:
           args: >
             -Dsonar.projectKey=SwamyVaditya_mainframe-modernization-platform
             -Dsonar.organization=swamyvaditya
-            -Dsonar.sources=.
-            -Dsonar.cobol.copy.directories=copybooks
-            -Dsonar.cobol.file.suffixes=cbl,cob
+            -Dsonar.sources=cobol,copybook
+            -Dsonar.cobol.copy.directories=copybook
+            -Dsonar.cobol.file.suffixes=cbl,cob,cpy
             -Dsonar.sourceEncoding=IBM1047
             -Dsonar.qualitygate.wait=true
       - name: Check Quality Gate
