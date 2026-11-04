@@ -110,7 +110,12 @@ jobs:
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
             export _BPXK_AUTOCVT=ON
-            export PATH=$HOME/.local/bin:$PATH
+            # Load profile which now has Rocket Git PATH
+            [ -f ~/.profile ] && . ~/.profile
+            export PATH=/usr/lpp/Rocket/rsusr/ported/bin:$HOME/.local/bin:$PATH
+            echo "PATH=$PATH"
+            which git
+            git version
             echo "=== Production DBB Build ==="
             mkdir -p ~/work/workspace
             cd ~/work/workspace
@@ -122,8 +127,8 @@ jobs:
             mkdir -p ~/.dbb/metadataStore
             cat > BuildReport.json << EOF
             {
-              "app": "${{ env.APP_NAME }}",
-              "version": "${{ env.BUILD_VERSION }}",
+              "app": "core-banking-app",
+              "version": "1.0.${{ github.run_number }}",
               "buildResult": "CLEAN"
             }
             EOF
