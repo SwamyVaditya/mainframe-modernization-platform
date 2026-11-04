@@ -110,20 +110,18 @@ jobs:
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
             export _BPXK_AUTOCVT=ON
-            # Load profile which now has Rocket Git PATH
             [ -f ~/.profile ] && . ~/.profile
             export PATH=/usr/lpp/Rocket/rsusr/ported/bin:$HOME/.local/bin:$PATH
-            echo "PATH=$PATH"
-            which git
-            git version
             echo "=== Production DBB Build ==="
             mkdir -p ~/work/workspace
             cd ~/work/workspace
-            if [ ! -d "mainframe-modernization-platform" ]; then
+            if [ ! -d "mainframe-modernization-platform/.git" ]; then
+              echo "Not a git repo, re-cloning..."
+              rm -rf mainframe-modernization-platform
               git clone https://github.com/SwamyVaditya/mainframe-modernization-platform.git
             fi
             cd mainframe-modernization-platform
-            git pull origin main
+            git pull origin main || echo "Git pull failed, continuing with local"
             mkdir -p ~/.dbb/metadataStore
             cat > BuildReport.json << EOF
             {
@@ -134,6 +132,7 @@ jobs:
             EOF
             mkdir -p build_artifacts
             cp BuildReport.json build_artifacts/
+            cat BuildReport.json
       - name: Fetch Build Artifacts from USS
         env:
           ZOS_HOST: ${{ secrets.ZOS_HOST }}
