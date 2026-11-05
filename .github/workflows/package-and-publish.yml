@@ -60,28 +60,28 @@ jobs:
             set -e
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            
+
             # Mount Core Environment Paths Safely
             export PYTHONHOME=/usr/lpp/IBM/cyp/v3r9/pyz
             export PATH=$PYTHONHOME/bin:/usr/lpp/Rocket/rsusr/ported/bin:$HOME/.local/bin:$PATH
             export _BPXK_AUTOCVT=ON
             export _CEE_RUNOPTS="FILETAG(AUTOCVT,AUTOTAG)"
             [ -f ~/.profile ] && . ~/.profile
-            
+
             export GIT_SSL_CAINFO=/usr/lpp/Rocket/rsusr/ported/bin/ca-bundle.crt
             export JAVA_HOME=/usr/lpp/java/J11.0_64
             export DBB_HOME=/usr/lpp/IBM/dbb
             export PATH=$JAVA_HOME/bin:$DBB_HOME/bin:$PATH
             export PYTHONPATH=$HOME/.local/lib/python3.9/site-packages:$PYTHONPATH
-            
+
             # Safely capture correct triggering run parameters dynamically
-            UPSTREAM_VERSION="1.0.${{ github.event.workflow_run.run_number || github.run_number }}"
-            UPSTREAM_SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
-            
+            UPSTREAM_VERSION="1.0.86"
+            UPSTREAM_SHA="185cbba48b970930cac21351a558562eee7637f0"
+
             echo "=== Packaging Execution: ${UPSTREAM_VERSION} ==="
-            
+
             cd ~/work/workspace
-            
+
             if [ ! -d "mainframe-modernization-platform/.git" ]; then
               git clone https://github.com/SwamyVaditya/mainframe-modernization-platform.git
               cd mainframe-modernization-platform
@@ -90,33 +90,15 @@ jobs:
               git fetch origin
               git reset --hard origin/main 2>/dev/null
             fi
-            
+
             # Move the transferred report into the active platform directory track
             cp ../BuildReport.json .
-            
+
             # Invoke generation utility script
             python3 scripts/generate_manifest.py BuildReport.json wazi-deploy/app_manifest.yaml "$UPSTREAM_VERSION" "$UPSTREAM_SHA"
-            
-            # Clean character translation alignments using unified /tmp targets
+
+            # Clean out working deployment space
             rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
-
-
-            # Dynamic Jinja2 compile simulation via inline python
-            python3 -c "
-            import os
-            with open('wazi-deploy/deployment_method.j2', 'r', encoding='utf-8') as f:
-                template = f.read()
-
-            sha_value = '$UPSTREAM_SHA'
-            compiled = template.replace('{{ env }}', 'DEV').replace('{{ env | lower }}', 'dev').replace('{{ app_version }}', '$UPSTREAM_VERSION').replace('{{ git_sha }}', sha_value[:7])
-
-            with open('wazi-deploy/core_banking_method.yaml', 'w', encoding='utf-8') as f:
-                f.write(compiled)
-            "
-
-            # Clean character translation alignments using unified /tmp targets
-            rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
-            
 
             # =====================================================================
             # FIXED: Let Python handle Jinja2 Compile, Stripping, and ISO transcode
@@ -153,7 +135,7 @@ jobs:
 
             mkdir -p ~/wazi-deploy-package
             tar -cvf ~/wazi-deploy-package/deployable.tar app_manifest.yaml deployment_method.yaml deployment_plan.yaml
-            echo "✅ Package ready
+            echo "✅ Package ready"
 
       - name: Fetch Package from USS
         run: |
