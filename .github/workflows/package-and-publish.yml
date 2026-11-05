@@ -5,8 +5,9 @@ on:
     workflows: ["DBB Build - Production Grade (Incremental + SonarQube + ZUnit)"]
     types: 
       - completed
-    branches: 
-      - main
+    # ALLOW TRIGGER ON ALL COMMIT BRANCH TRACKS
+    branches: ["*"]
+  
   workflow_dispatch:
 
 env:

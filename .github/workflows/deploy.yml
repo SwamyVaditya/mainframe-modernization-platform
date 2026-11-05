@@ -4,7 +4,8 @@ on:
   workflow_run:
     workflows: ["Package + Publish - Production (BuildReport.json -> Wazi + JFrog)"]
     types: [completed]
-    branches: [main]
+    # ALLOW TRIGGER ON ALL COMMIT BRANCH TRACKS
+    branches: ["*"]
   workflow_dispatch:
     inputs:
       environment:

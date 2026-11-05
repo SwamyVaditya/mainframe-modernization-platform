@@ -48,5 +48,5 @@
            END-IF
 
            CLOSE ACCT-FILE
-           DISPLAY 'TEST CICD WORKFLOWS ... '
+           DISPLAY 'NEW TESTING - CICD WORKFLOWS ... '
            GOBACK.
