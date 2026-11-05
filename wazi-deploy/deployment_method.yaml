@@ -10,7 +10,7 @@ activities:
     actions:
       - name: Deploy LOAD Modules
         description: Generic action that deploys any LOAD from manifest - handles N programs
-        # 👇 CRITICAL ENTERPRISE BINDING SELECTOR LAYER
+        # CRITICAL ENTERPRISE BINDING SELECTOR LAYER
         selector:
           type: LOAD
         steps:
