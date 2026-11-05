@@ -5,7 +5,7 @@ on:
     workflows: ["Package + Publish - Production (BuildReport.json -> Wazi + JFrog)"]
     types: [completed]
     # ALLOW TRIGGER ON ALL COMMIT BRANCH TRACKS
-    branches: ["*"]
+    # branches: ["*"]
   workflow_dispatch:
     inputs:
       environment:
