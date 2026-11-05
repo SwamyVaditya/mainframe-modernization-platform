@@ -99,16 +99,20 @@ jobs:
             
             # Clean character translation alignments using unified /tmp targets
             rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
-            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/app_manifest.yaml > /tmp/wazi-deploy/app_manifest.yaml
+
+
+            # =====================================================================
+            # FIXED: Let Python remove the trailing Control-Z (\x1a) during conversion
+            # =====================================================================
+            python3 -c "
+            with open('wazi-deploy/app_manifest.yaml', 'r', encoding='utf-8') as f:
+                text = f.read().replace('\x1a', '')
+            with open('/tmp/wazi-deploy/app_manifest.yaml', 'w', encoding='utf-8') as f:
+                f.write(text)
+            "
+
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/core_banking_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null || iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
             
-            # =====================================================================
-            # FIXED: Explicitly strip out any hidden Control-Z (\x1a) junk characters 
-            # =====================================================================
-            sed -i 's/\x1a//g' /tmp/wazi-deploy/app_manifest.yaml
-            # =====================================================================
-
-
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
             
             echo "=== Executing Wazi Package Engine ==="
