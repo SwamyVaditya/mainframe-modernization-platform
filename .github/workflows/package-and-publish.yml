@@ -1,8 +1,6 @@
 name: Package + Publish - Production (BuildReport.json -> Wazi + JFrog)
 
 on:
-  push:
-    branches: [main]
   workflow_run:
     workflows: ["DBB Build - Production Grade (Incremental + SonarQube + ZUnit)"]
     types: [completed]
@@ -34,6 +32,9 @@ jobs:
             set -e
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
+
+            export PYTHONHOME=/usr/lpp/IBM/cyp/v3r9/pyz
+
             export _BPXK_AUTOCVT=ON
             [ -f ~/.profile ] && . ~/.profile
             export PATH=$PYTHONHOME/bin:/usr/lpp/Rocket/rsusr/ported/bin:$HOME/.local/bin:$PATH
@@ -43,6 +44,11 @@ jobs:
             echo "Pattern: BuildReport.json -> ApplicationManifest (dynamic)"
             
             cd ~/work/workspace/mainframe-modernization-platform
+
+            # CRITICAL: Pull latest code with wazi-deploy/ and scripts/ folders!
+            git pull origin main
+            ls -l wazi-deploy/
+            ls -l scripts/
             
             # Get BuildReport.json from DBB build (if exists) or create fallback
             if [ ! -f "BuildReport.json" ]; then

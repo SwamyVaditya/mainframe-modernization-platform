@@ -1,0 +1,36 @@
+{# Production-grade Jinja2 template for DeploymentMethod #}
+{# Usage: python3 -m jinja2 deployment_method.j2 -D env=DEV -D app_version=1.0.123 > deployment_method.yaml #}
+apiVersion: wazideploy.【entity-ibm¦canonical_name=IBM】.com/v1
+kind: DeploymentMethod
+metadata:
+  name: core-banking-deploy-method-{{ env | lower }}
+  version: {{ app_version }}
+  description: Core Banking Platform - Deploy to {{ env }} - Generic, application-level - Generated from template
+  environment: {{ env }}
+activities:
+    - name: Deploy COBOL Artifacts to {{ env }}
+    description: Deploy all COBOL LOAD modules to {{ env }} environment
+    actions:
+            - name: Deploy LOAD Modules to {{ env }}
+        description: Generic action - handles any LOAD from manifest
+        steps:
+                    - name: Deploy LOAD to {{ env }}
+            properties:
+                            - key: template
+                value: |
+                  echo "=========================================="
+                  echo "Environment: {{ env }}"
+                  echo "Deploying {{name}} (Type: {{type}})"
+                  echo "Source: {{dataset}}({{member}})"
+                  echo "Target: {{ target_dataset | default('Z78651.' + env + '.LOAD') }}"
+                  echo "Build: {{ app_version }}, Git SHA: {{ git_sha }}"
+                  echo "=========================================="
+                  {% if env == "PROD" %}
+                  echo "PROD deployment - Blue-Green pattern, requires manual approval"
+                  echo "Backing up previous version before deploy..."
+                  {% elif env == "TEST" %}
+                  echo "TEST deployment - Manual approval required"
+                  {% else %}
+                  echo "DEV deployment - Auto deploy"
+                  {% endif %}
+                  echo "Enterprise Pattern: Generic template, works for N programs"
