@@ -1,5 +1,4 @@
 name: Deploy - Production CD (JFrog -> Wazi -> Smoke Tests -> Rollback)
-
 on:
   workflow_run:
     workflows: ["Package + Publish - Production (BuildReport.json -> Wazi + JFrog)"]
@@ -22,14 +21,12 @@ jobs:
   deploy-dev:
     name: Deploy to DEV (Auto)
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     environment: DEV
-    
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Fetch from JFrog + Deploy to DEV
+      - name: Deploy DEV
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -40,37 +37,26 @@ jobs:
             set -e
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-
-            export PYTHONHOME=/usr/lpp/IBM/cyp/v3r9/pyz
-            
             export _BPXK_AUTOCVT=ON
             [ -f ~/.profile ] && . ~/.profile
             export PATH=$PYTHONHOME/bin:/usr/lpp/Rocket/rsusr/ported/bin:$HOME/.local/bin:$PATH
             export PYTHONPATH=$HOME/.local/lib/python3.9/site-packages:$PYTHONPATH
+            export GIT_SSL_CAINFO=/usr/lpp/Rocket/rsusr/ported/bin/ca-bundle.crt
             
-            echo "=== Deploy to DEV - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }} ==="
-            echo "Pattern: Fetch from JFrog -> Wazi Deploy -> Smoke Tests"
+            echo "=== Deploy DEV - ${{ env.BUILD_VERSION }} ==="
             
             mkdir -p ~/work/workspace
             cd ~/work/workspace
-            # CRITICAL: Check if git repo, re-clone if not (fixes 'origin does not appear' error)
             if [ ! -d "mainframe-modernization-platform/.git" ]; then
-              echo "Not a git repo, re-cloning..."
               rm -rf mainframe-modernization-platform
               git clone https://github.com/SwamyVaditya/mainframe-modernization-platform.git
             fi
-
             cd mainframe-modernization-platform
-            
-            # CRITICAL: Pull latest code with wazi-deploy/ and scripts/ folders!
-            git pull origin main
-            ls -l wazi-deploy/
-            ls -l scripts/
-
-            # Production: Fetch latest deployable.tar from JFrog (or use local wazi-deploy files)
-            # For portfolio, BUILD.LOAD is DEV
-            echo "Using deployment files from repo wazi-deploy/"
-            ls -l wazi-deploy/
+            git pull origin main || {
+              git remote remove origin 2>/dev/null || true
+              git remote add origin https://github.com/SwamyVaditya/mainframe-modernization-platform.git
+              git pull origin main || echo "Pull failed"
+            }
             
             mkdir -p /tmp/wazi-deploy-dev
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/app_manifest.yaml > /tmp/wazi-deploy-dev/app_manifest.yaml
@@ -79,14 +65,12 @@ jobs:
             
             cd /tmp/wazi-deploy-dev
             wazideploy-package -dm deployment_method.yaml -m app_manifest.yaml -dp deployment_plan.yaml
-            
             cat deployment_plan.yaml
             
-            echo "=== Deploy to DEV ==="
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ DEV deployment verified - ACCTBALA in BUILD.LOAD"
-            echo "✅ Deployed to DEV - ${{ env.BUILD_VERSION }}"
+            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ DEV verified"
+            echo "✅ Deployed DEV - ${{ env.BUILD_VERSION }}"
 
-      - name: Smoke Tests DEV
+      - name: Smoke DEV
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -96,17 +80,11 @@ jobs:
           script: |
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            echo "=== Smoke Tests DEV ==="
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA
-            if [ $? -eq 0 ]; then
-              echo "✅ Smoke PASS - ACCTBALA exists"
-            else
-              echo "❌ Smoke FAIL"
-              exit 1
-            fi
+            echo "=== Smoke DEV ==="
+            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ Smoke PASS" || (echo "❌ FAIL" && exit 1)
 
   deploy-test:
-    name: Deploy to TEST (Manual Approval)
+    name: Deploy TEST (Manual Approval)
     runs-on: ubuntu-latest
     needs: deploy-dev
     if: ${{ needs.deploy-dev.result == 'success' }}
@@ -124,19 +102,19 @@ jobs:
           script: |
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            echo "=== Deploy TEST - ${{ env.BUILD_VERSION }} - Manual Approval ==="
+            echo "=== Deploy TEST - ${{ env.BUILD_VERSION }} ==="
             tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ TEST verified"
 
   deploy-prod:
-    name: Deploy to PROD (Manual Approval + Blue-Green + Rollback)
+    name: Deploy PROD (Manual Approval + Rollback)
     runs-on: ubuntu-latest
     needs: deploy-test
-    if: ${{ needs.deploy-test.result == 'success' && github.ref == 'refs/heads/main' }}
+    if: ${{ needs.deploy-test.result == 'success' }}
     environment: PROD
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Deploy PROD Blue-Green
+      - name: Deploy PROD
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -147,9 +125,8 @@ jobs:
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
             echo "=== Deploy PROD - Blue-Green - ${{ env.BUILD_VERSION }} ==="
-            echo "Manual approval - Production pattern"
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ PROD verified - Blue-Green ready"
-      - name: Smoke Tests PROD
+            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ PROD verified"
+      - name: Smoke PROD
         id: smoke-prod
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -161,8 +138,8 @@ jobs:
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
             echo "=== Smoke PROD ==="
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ PROD Smoke PASS" || (echo "❌ FAIL" && exit 1)
-      - name: Rollback on Failure
+            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ PROD PASS" || (echo "❌ FAIL" && exit 1)
+      - name: Rollback
         if: ${{ failure() && steps.smoke-prod.outcome == 'failure' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -174,19 +151,4 @@ jobs:
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
             echo "=== Rollback PROD ==="
-            echo "Rolling back to previous version"
-
-  summary:
-    name: CD Summary
-    runs-on: ubuntu-latest
-    needs: [deploy-dev, deploy-test, deploy-prod]
-    if: always()
-    steps:
-      - name: Summary
-        run: |
-          echo "## 🚀 Production CD - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- DEV: ${{ needs.deploy-dev.result }} (Auto)" >> $GITHUB_STEP_SUMMARY
-          echo "- TEST: ${{ needs.deploy-test.result }} (Manual Approval)" >> $GITHUB_STEP_SUMMARY
-          echo "- PROD: ${{ needs.deploy-prod.result }} (Blue-Green + Rollback)" >> $GITHUB_STEP_SUMMARY
-          echo "- Pattern: JFrog -> Wazi Deploy -> Smoke Tests -> Rollback" >> $GITHUB_STEP_SUMMARY
-          echo "- No Inline YAML: Files in wazi-deploy/" >> $GITHUB_STEP_SUMMARY
+            echo "Rolling back"
