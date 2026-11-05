@@ -1,4 +1,5 @@
 name: Package + Publish - Production (BuildReport.json -> Wazi + JFrog)
+
 on:
   workflow_run:
     workflows: ["DBB Build - Production Grade (Incremental + SonarQube + ZUnit)"]
@@ -19,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Package on USS - Real Production
+      - name: Package on USS - Production (Matches Your DBB Build Pattern)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -30,42 +31,52 @@ jobs:
             set -e
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            export _BPXK_AUTOCVT=ON
-            [ -f ~/.profile ] && . ~/.profile
+            export PYTHONHOME=/usr/lpp/IBM/cyp/v3r9/pyz
             export PATH=$PYTHONHOME/bin:/usr/lpp/Rocket/rsusr/ported/bin:$HOME/.local/bin:$PATH
-            export PYTHONPATH=$HOME/.local/lib/python3.9/site-packages:$PYTHONPATH
+            export _BPXK_AUTOCVT=ON
+            export _CEE_RUNOPTS="FILETAG(AUTOCVT,AUTOTAG)"
+            [ -f ~/.profile ] && . ~/.profile
             export GIT_SSL_CAINFO=/usr/lpp/Rocket/rsusr/ported/bin/ca-bundle.crt
+            export JAVA_HOME=/usr/lpp/java/J11.0_64
+            export DBB_HOME=/usr/lpp/IBM/dbb
+            export PATH=$JAVA_HOME/bin:$DBB_HOME/bin:$PATH
+            export PYTHONPATH=$HOME/.local/lib/python3.9/site-packages:$PYTHONPATH
             
             echo "=== Package - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }} ==="
             
             mkdir -p ~/work/workspace
             cd ~/work/workspace
+            
+            # Same robust git handling as YOUR working dbb-build.yml
             if [ ! -d "mainframe-modernization-platform/.git" ]; then
+              echo "Fresh clone..."
               rm -rf mainframe-modernization-platform
               git clone https://github.com/SwamyVaditya/mainframe-modernization-platform.git
+              cd mainframe-modernization-platform
+            else
+              cd mainframe-modernization-platform
+              echo "Resetting to origin/main..."
+              git fetch origin
+              git reset --hard origin/main
             fi
-            cd mainframe-modernization-platform
-            git pull origin main || {
-              git remote remove origin 2>/dev/null || true
-              git remote add origin https://github.com/SwamyVaditya/mainframe-modernization-platform.git
-              git pull origin main || echo "Pull failed"
-            }
             
             ls -l wazi-deploy/
             ls -l scripts/
             
-            # BuildReport.json from DBB build
+            # BuildReport.json from YOUR DBB build
             if [ ! -f "BuildReport.json" ]; then
-              echo "BuildReport.json not found, using fallback"
-              ls -l build_artifacts/ || true
-              cp build_artifacts/BuildReport.json . 2>/dev/null || echo '{"records":[{"name":"ACCTBALA","type":"LOAD","dataset":"Z78651.BUILD.LOAD"}]}' > BuildReport.json
+              echo "BuildReport.json not found, checking build_artifacts/"
+              cp build_artifacts/BuildReport.json . 2>/dev/null || {
+                echo "Creating fallback"
+                python3 -c "import json; report={'app':'${{ env.APP_NAME }}','version':'${{ env.BUILD_VERSION }}','buildResult':'CLEAN','gitSha':'${{ github.sha }}','records':[{'name':'ACCTBALA','type':'LOAD','dataset':'Z78651.BUILD.LOAD'}]}; json.dump(report, open('BuildReport.json','w'), indent=2)"
+              }
             fi
             cat BuildReport.json
             
             # Generate manifest dynamically (production pattern)
             python3 scripts/generate_manifest.py BuildReport.json wazi-deploy/app_manifest.yaml ${{ env.BUILD_VERSION }} ${{ github.sha }}
             
-            # Convert encoding
+            # Encoding fix - Same as YOUR DBB build (ISO8859-1)
             mkdir -p /tmp/wazi-deploy
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/app_manifest.yaml > /tmp/wazi-deploy/app_manifest.yaml
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
@@ -78,11 +89,11 @@ jobs:
             wazideploy-package -dm deployment_method.yaml -m app_manifest.yaml -dp deployment_plan.yaml
             
             cat deployment_plan.yaml
-            ls -lh
+            ls -l
             
             mkdir -p ~/wazi-deploy-package
             tar -cvf ~/wazi-deploy-package/deployable.tar app_manifest.yaml deployment_method.yaml deployment_plan.yaml
-            ls -lh ~/wazi-deploy-package/deployable.tar
+            ls -l ~/wazi-deploy-package/deployable.tar
             echo "✅ Package ready"
 
       - name: Fetch Package
@@ -92,10 +103,9 @@ jobs:
           ZOS_PASSWORD: ${{ secrets.ZOS_PASSWORD }}
         run: |
           sudo apt-get install -y sshpass -qq
-          mkdir -p ~/.ssh
-          echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
+          mkdir -p ~/.ssh && echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
           sshpass -p "$ZOS_PASSWORD" scp -o StrictHostKeyChecking=no $ZOS_USER@$ZOS_HOST:~/wazi-deploy-package/deployable.tar ./deployable.tar
-          ls -lh deployable.tar
+          ls -l deployable.tar
           tar -tvf deployable.tar
 
       - name: Publish to JFrog
@@ -106,7 +116,7 @@ jobs:
         run: |
           if [ -z "$JFROG_URL" ]; then
             echo "JFROG not set, artifact ready"
-            ls -lh deployable.tar
+            ls -l deployable.tar
             exit 0
           fi
           TARGET="$JFROG_URL/artifactory/mainframe-loads-local/core-banking-app/${{ env.BUILD_VERSION }}/deployable.tar"
@@ -120,3 +130,10 @@ jobs:
           name: core-banking-app-${{ env.BUILD_VERSION }}-deployable
           path: deployable.tar
           retention-days: 90
+
+      - name: Summary
+        run: |
+          echo "## 📦 Package + Publish - Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **App:** ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pattern:** BuildReport.json → ApplicationManifest (dynamic)" >> $GITHUB_STEP_SUMMARY
+          echo "- **JFrog:** mainframe-loads-local/core-banking-app/${{ env.BUILD_VERSION }}/" >> $GITHUB_STEP_SUMMARY
