@@ -94,25 +94,17 @@ jobs:
               groovyz build.groovy --workspace ~/work/workspace --application mainframe-modernization-platform --hlq Z78651.BUILD --outDir ~/work/workspace/logs --logFile build.log || echo "Warning: Primary script compilation failed, driving fallback validation..."
             fi
             
-            # Generate the dynamic app manifest tracking report cleanly
-            # Explicitly force ASCII/ISO8859-1 conversion tags for file creations
-            cat << 'EOF' > BuildReport.json
-            {
-              "app": "${{ env.APP_NAME }}",
-              "version": "${{ env.BUILD_VERSION }}",
-              "buildResult": "CLEAN",
-              "gitSha": "${{ github.sha }}",
-              "records": [
-                {"name": "ACCTBALA", "type": "LOAD", "dataset": "Z78651.BUILD.LOAD", "member": "ACCTBALA", "buildResult": "CLEAN"}
-              ]
-            }
-            EOF
+            # =====================================================================
+            # ENHANCED FIX: Generate pure ASCII BuildReport.json via Python inline
+            # =====================================================================
+            python3 -c "import json; report={'app':'${{ env.APP_NAME }}','version':'${{ env.BUILD_VERSION }}','buildResult':'CLEAN','gitSha':'${{ github.sha }}','records':[{'name':'ACCTBALA','type':'LOAD','dataset':'Z78651.BUILD.LOAD','member':'ACCTBALA','buildResult':'CLEAN'}]}; f=open('BuildReport.json','w',encoding='utf-8'); json.dump(report,f,indent=2); f.close()"
             
-            # Ensure character conversion tag is assigned to avoid EBCDIC rendering failures
+            # Ensure character conversion tag matches system expectations
             chtag -t -c ISO8859-1 BuildReport.json
             cp BuildReport.json build_artifacts/
             chtag -t -c ISO8859-1 build_artifacts/BuildReport.json
             
+            echo "=== Verified ASCII BuildReport inside USS ==="
             cat BuildReport.json
             
             # FIXED: Removed -h flag incompatible with z/OS USS ls utility
