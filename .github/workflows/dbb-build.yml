@@ -123,6 +123,21 @@ jobs:
             
             echo "✅ DBB Build CLEAN - ${{ env.BUILD_VERSION }}"
 
+      # =====================================================================
+      # ADDED STEP: Pull the report back from the Mainframe USS to the Runner
+      # =====================================================================
+      - name: Download BuildReport from Mainframe
+        run: |
+          sudo apt-get install -y sshpass -qq
+          mkdir -p ~/.ssh && echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
+          
+          echo "Downloading BuildReport.json from USS workspace to local GitHub runner..."
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no \
+            ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/mainframe-modernization-platform/BuildReport.json ./BuildReport.json
+          
+          echo "=== Local File Verification ==="
+          cat ./BuildReport.json
+    
       - name: Upload BuildReport
         uses: actions/upload-artifact@v4
         with:
