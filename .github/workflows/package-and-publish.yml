@@ -118,34 +118,37 @@ jobs:
             rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
 
             # =====================================================================
-            # FIXED: Let Python scrub the trailing Control-Z (\x1a) from BOTH files
+            # FIXED: Read from source, strip \x1a, and write STRAIGHT to /tmp/
             # =====================================================================
             python3 -c "
-            # 1. Sanitize the application manifest file buffer
+            # 1. Sanitize and write out the application manifest directly to /tmp
             with open('wazi-deploy/app_manifest.yaml', 'r', encoding='utf-8') as f:
                 manifest_text = f.read().replace('\x1a', '')
             with open('/tmp/wazi-deploy/app_manifest.yaml', 'w', encoding='utf-8') as f:
                 f.write(manifest_text)
 
-            # 2. Sanitize the compiled deployment method template file buffer
+            # 2. Sanitize and write out the deployment method directly to /tmp
             with open('wazi-deploy/core_banking_method.yaml', 'r', encoding='utf-8') as f:
                 method_text = f.read().replace('\x1a', '')
-            with open('/tmp/wazi-deploy/core_banking_method.yaml', 'w', encoding='utf-8') as f:
+            with open('/tmp/wazi-deploy/deployment_method.tmp', 'w', encoding='utf-8') as f:
                 f.write(method_text)
             "
 
-            # Transcode clean sanitized scripts to mainframe native layout streams
-            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/core_banking_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null || iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
-            
+            # Transcode from the perfectly clean /tmp file instead of the source workspace
+            iconv -f UTF-8 -t ISO8859-1 /tmp/wazi-deploy/deployment_method.tmp > /tmp/wazi-deploy/deployment_method.yaml
+            rm -f /tmp/wazi-deploy/deployment_method.tmp
+
+            # Tag the clean configurations for the Wazi engine
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
-            
+
             echo "=== Executing Wazi Package Engine ==="
             cd /tmp/wazi-deploy
             wazideploy-package -dm deployment_method.yaml -m app_manifest.yaml -dp deployment_plan.yaml
-            
+
             mkdir -p ~/wazi-deploy-package
             tar -cvf ~/wazi-deploy-package/deployable.tar app_manifest.yaml deployment_method.yaml deployment_plan.yaml
             echo "✅ Package ready"
+
 
       - name: Fetch Package from USS
         run: |
