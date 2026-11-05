@@ -1,8 +1,9 @@
-name: Package + Publish - Production (BuildReport.json -> Wazi + JFrog)
+# Package + Publish - Production (BuildReport.json -> Wazi + JFrog)
+name: Package and Publish
 
 on:
   workflow_run:
-    workflows: ["DBB Build - Production Grade (Incremental + SonarQube + ZUnit)"]
+    workflows: ["DBB Build"]
     types: 
       - completed
     # ALLOW TRIGGER ON ALL COMMIT BRANCH TRACKS

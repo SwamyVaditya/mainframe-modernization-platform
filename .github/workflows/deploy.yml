@@ -1,8 +1,9 @@
-name: Deploy - Production CD (JFrog -> Wazi -> Smoke Tests -> Rollback)
+# Deploy - Production CD (JFrog -> Wazi -> Smoke Tests -> Rollback)
+name: Deploy - Production CD
 
 on:
   workflow_run:
-    workflows: ["Package + Publish - Production (BuildReport.json -> Wazi + JFrog)"]
+    workflows: ["Package and Publish"]
     types: [completed]
     # ALLOW TRIGGER ON ALL COMMIT BRANCH TRACKS
     # branches: ["*"]

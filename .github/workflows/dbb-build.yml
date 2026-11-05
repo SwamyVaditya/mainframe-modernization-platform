@@ -1,4 +1,5 @@
-name: DBB Build - Production Grade (Incremental + SonarQube + ZUnit)
+# DBB Build - Production Grade (Incremental + SonarQube + ZUnit)
+name: DBB Build
 
 on:
   push:
