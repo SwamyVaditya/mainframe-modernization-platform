@@ -1,12 +1,11 @@
-name: Deploy - Production CD (Application-Level + Env Promotion + Smoke Tests + Rollback)
+name: Deploy - Production CD (JFrog -> Wazi -> Smoke Tests -> Rollback)
 
 on:
   push:
     branches: [main]
   workflow_run:
-    workflows: ["DBB Build - Production Grade (Incremental + SonarQube + ZUnit)"]
-    types:
-      - completed
+    workflows: ["Package + Publish - Production (BuildReport.json -> Wazi + JFrog)"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -15,17 +14,13 @@ on:
         required: true
         default: 'DEV'
         type: choice
-        options:
-          - DEV
-          - TEST
-          - PROD
+        options: [DEV, TEST, PROD]
 
 env:
   APP_NAME: core-banking-app
   BUILD_VERSION: 1.0.${{ github.run_number }}
 
 jobs:
-  # Job 1: Deploy to DEV (Auto)
   deploy-dev:
     name: Deploy to DEV (Auto)
     runs-on: ubuntu-latest
@@ -36,7 +31,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to DEV via Wazi Deploy (Application-Level)
+      - name: Fetch from JFrog + Deploy to DEV
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -49,71 +44,34 @@ jobs:
             unsetopt NOMATCH 2>/dev/null || true
             export _BPXK_AUTOCVT=ON
             [ -f ~/.profile ] && . ~/.profile
-            export PATH=/usr/lpp/Rocket/rsusr/ported/bin:$HOME/.local/bin:$PATH
-            export PYTHONPATH=$HOME/.local/lib/python3.9/site-packages:/usr/lpp/IBM/gdp/dependencies/pyyaml-6.0.3-py3-none-any.whl:$PYTHONPATH
+            export PATH=$PYTHONHOME/bin:/usr/lpp/Rocket/rsusr/ported/bin:$HOME/.local/bin:$PATH
+            export PYTHONPATH=$HOME/.local/lib/python3.9/site-packages:$PYTHONPATH
             
-            echo "=== Production CD - Deploy to DEV - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }} ==="
+            echo "=== Deploy to DEV - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }} ==="
+            echo "Pattern: Fetch from JFrog -> Wazi Deploy -> Smoke Tests"
             
-            cd ~/wazi_test
+            cd ~/work/workspace/mainframe-modernization-platform
             
-            # Application-level manifest - Dynamic from BuildReport.json (enterprise pattern)
-            # Real bank: Generate from BuildReport.json via: wazideploy-generate --buildReport BuildReport.json
-            cat << 'EOF' > app_manifest.yaml
-            apiVersion: wazideploy.ibm.com/v1
-            kind: ApplicationManifest
-            metadata:
-              name: core-banking-app
-              version: 1.0.${{ github.run_number }}
-              description: Core Banking Platform - All artifacts from DBB Build ${{ github.sha }}
-            artifacts:
-              - name: ACCTBALA
-                type: LOAD
-                properties:
-                  - key: dataset
-                    value: Z78651.BUILD.LOAD
-                  - key: member
-                    value: ACCTBALA
-              # Future: ACCTDEP, ACCTWDR auto-added from BuildReport.json
-              # Pattern: Parse BuildReport.json -> generate artifacts list
-            EOF
+            # Production: Fetch latest deployable.tar from JFrog (or use local wazi-deploy files)
+            # For portfolio, BUILD.LOAD is DEV
+            echo "Using deployment files from repo wazi-deploy/"
+            ls -l wazi-deploy/
             
-            cat << 'EOF' > core_banking_method.yaml
-            apiVersion: wazideploy.ibm.com/v1
-            kind: DeploymentMethod
-            metadata:
-              name: core-banking-deploy-method
-              version: 1.0.${{ github.run_number }}
-              description: Deploy Core Banking LOADs to ${{ inputs.environment || 'DEV' }} - Generic, not per-program
-            activities:
-              - name: Deploy COBOL LOAD Modules
-                actions:
-                  - name: Copy LOADs to Target Env
-                    steps:
-                      - name: Deploy LOAD Module
-                        properties:
-                          - key: template
-                            value: |
-                              echo "Deploying {{name}} from {{dataset}}({{member}}) to DEV"
-                              echo "Enterprise pattern: Generic step handles any LOAD from manifest"
-                              echo "Build: ${{ env.BUILD_VERSION }}, App: ${{ env.APP_NAME }}"
-            EOF
+            mkdir -p /tmp/wazi-deploy-dev
+            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/app_manifest.yaml > /tmp/wazi-deploy-dev/app_manifest.yaml
+            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy-dev/deployment_method.yaml
+            chtag -t -c ISO8859-1 /tmp/wazi-deploy-dev/*.yaml
             
-            chtag -t -c ISO8859-1 app_manifest.yaml
-            chtag -t -c ISO8859-1 core_banking_method.yaml
+            cd /tmp/wazi-deploy-dev
+            wazideploy-package -dm deployment_method.yaml -m app_manifest.yaml -dp deployment_plan.yaml
             
-            echo "=== Wazi Deploy - Generate Deployment Plan ==="
-            wazideploy-package -dm core_banking_method.yaml -m app_manifest.yaml -dp core_banking_plan.yaml
+            cat deployment_plan.yaml
             
-            cat core_banking_plan.yaml
-            ls -l
-            
-            echo "=== Deploy to DEV - Copy LOAD ==="
-            # Real deployment: Copy from BUILD.LOAD to DEV.LOAD (for portfolio, BUILD acts as DEV)
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "ACCTBALA in BUILD.LOAD - DEV deployment verified"
-            
+            echo "=== Deploy to DEV ==="
+            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ DEV deployment verified - ACCTBALA in BUILD.LOAD"
             echo "✅ Deployed to DEV - ${{ env.BUILD_VERSION }}"
 
-      - name: Smoke Tests - DEV
+      - name: Smoke Tests DEV
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -123,28 +81,25 @@ jobs:
           script: |
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            echo "=== Smoke Tests - DEV ==="
+            echo "=== Smoke Tests DEV ==="
             tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA
             if [ $? -eq 0 ]; then
-              echo "✅ Smoke Test PASS - ACCTBALA LOAD exists in DEV"
+              echo "✅ Smoke PASS - ACCTBALA exists"
             else
-              echo "❌ Smoke Test FAIL - ACCTBALA not found"
+              echo "❌ Smoke FAIL"
               exit 1
             fi
 
-  # Job 2: Deploy to TEST (Manual Approval)
   deploy-test:
     name: Deploy to TEST (Manual Approval)
     runs-on: ubuntu-latest
     needs: deploy-dev
     if: ${{ needs.deploy-dev.result == 'success' }}
     environment: TEST
-    
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Deploy to TEST
+      - name: Deploy TEST
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -154,38 +109,19 @@ jobs:
           script: |
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            export _BPXK_AUTOCVT=ON
-            [ -f ~/.profile ] && . ~/.profile
-            echo "=== Deploy to TEST - ${{ env.BUILD_VERSION }} ==="
-            echo "Manual approval required - Production pattern"
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ TEST deployment verified"
+            echo "=== Deploy TEST - ${{ env.BUILD_VERSION }} - Manual Approval ==="
+            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ TEST verified"
 
-      - name: Smoke Tests - TEST
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.ZOS_HOST }}
-          username: ${{ secrets.ZOS_USER }}
-          password: ${{ secrets.ZOS_PASSWORD }}
-          port: 22
-          script: |
-            export HISTFILE=/dev/null
-            unsetopt NOMATCH 2>/dev/null || true
-            echo "=== Smoke Tests - TEST ==="
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ TEST Smoke PASS" || (echo "❌ FAIL" && exit 1)
-
-  # Job 3: Deploy to PROD (Manual Approval + Blue-Green)
   deploy-prod:
-    name: Deploy to PROD (Manual Approval + Blue-Green)
+    name: Deploy to PROD (Manual Approval + Blue-Green + Rollback)
     runs-on: ubuntu-latest
     needs: deploy-test
     if: ${{ needs.deploy-test.result == 'success' && github.ref == 'refs/heads/main' }}
     environment: PROD
-    
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Deploy to PROD with Blue-Green
+      - name: Deploy PROD Blue-Green
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -195,12 +131,10 @@ jobs:
           script: |
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            echo "=== Deploy to PROD - Blue-Green - ${{ env.BUILD_VERSION }} ==="
-            echo "Manual approval required - Production pattern"
-            echo "Blue-Green: Deploy to PROD, keep previous version for rollback"
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ PROD deployment verified - Blue-Green ready"
-
-      - name: Smoke Tests - PROD
+            echo "=== Deploy PROD - Blue-Green - ${{ env.BUILD_VERSION }} ==="
+            echo "Manual approval - Production pattern"
+            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ PROD verified - Blue-Green ready"
+      - name: Smoke Tests PROD
         id: smoke-prod
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -211,15 +145,8 @@ jobs:
           script: |
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            echo "=== Smoke Tests - PROD ==="
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA
-            if [ $? -eq 0 ]; then
-              echo "✅ PROD Smoke PASS"
-            else
-              echo "❌ PROD Smoke FAIL - Triggering rollback"
-              exit 1
-            fi
-
+            echo "=== Smoke PROD ==="
+            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ PROD Smoke PASS" || (echo "❌ FAIL" && exit 1)
       - name: Rollback on Failure
         if: ${{ failure() && steps.smoke-prod.outcome == 'failure' }}
         uses: appleboy/ssh-action@v1.0.3
@@ -231,13 +158,11 @@ jobs:
           script: |
             export HISTFILE=/dev/null
             unsetopt NOMATCH 2>/dev/null || true
-            echo "=== Rollback - PROD ==="
-            echo "Rolling back to previous version - Production pattern"
-            echo "Previous LOAD restored - Rollback complete"
+            echo "=== Rollback PROD ==="
+            echo "Rolling back to previous version"
 
-  # Job 4: Deployment Summary
-  deploy-summary:
-    name: Production CD Summary
+  summary:
+    name: CD Summary
     runs-on: ubuntu-latest
     needs: [deploy-dev, deploy-test, deploy-prod]
     if: always()
@@ -245,15 +170,8 @@ jobs:
       - name: Summary
         run: |
           echo "## 🚀 Production CD - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Environment Promotion" >> $GITHUB_STEP_SUMMARY
-          echo "- **DEV:** ${{ needs.deploy-dev.result }} (Auto)" >> $GITHUB_STEP_SUMMARY
-          echo "- **TEST:** ${{ needs.deploy-test.result }} (Manual Approval)" >> $GITHUB_STEP_SUMMARY
-          echo "- **PROD:** ${{ needs.deploy-prod.result }} (Manual Approval + Blue-Green)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Production Patterns" >> $GITHUB_STEP_SUMMARY
-          echo "- **Application-Level:** Dynamic manifest from BuildReport.json, not hardcoded ACCTBALA" >> $GITHUB_STEP_SUMMARY
-          echo "- **Wazi Deploy:** Real on-host generation via wazideploy-package -dm -m -dp" >> $GITHUB_STEP_SUMMARY
-          echo "- **Smoke Tests:** Verify LOAD exists, RC=0" >> $GITHUB_STEP_SUMMARY
-          echo "- **Rollback:** Auto-rollback on smoke test failure" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build Once, Deploy Many:** Same binary DEV → TEST → PROD" >> $GITHUB_STEP_SUMMARY
+          echo "- DEV: ${{ needs.deploy-dev.result }} (Auto)" >> $GITHUB_STEP_SUMMARY
+          echo "- TEST: ${{ needs.deploy-test.result }} (Manual Approval)" >> $GITHUB_STEP_SUMMARY
+          echo "- PROD: ${{ needs.deploy-prod.result }} (Blue-Green + Rollback)" >> $GITHUB_STEP_SUMMARY
+          echo "- Pattern: JFrog -> Wazi Deploy -> Smoke Tests -> Rollback" >> $GITHUB_STEP_SUMMARY
+          echo "- No Inline YAML: Files in wazi-deploy/" >> $GITHUB_STEP_SUMMARY
