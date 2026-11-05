@@ -1,4 +1,3 @@
-# Force GitHub Event Hook Index Registration Update
 name: Package + Publish - Production (BuildReport.json -> Wazi + JFrog)
 
 on:
