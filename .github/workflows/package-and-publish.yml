@@ -116,27 +116,33 @@ jobs:
 
             # Clean character translation alignments using unified /tmp targets
             rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
+            
 
             # =====================================================================
-            # FIXED: Read from source, strip \x1a, and write STRAIGHT to /tmp/
+            # FIXED: Let Python handle Jinja2 Compile, Stripping, and ISO transcode
             # =====================================================================
             python3 -c "
-            # 1. Sanitize and write out the application manifest directly to /tmp
+            import os
+
+            # 1. Compile the Jinja2 template and strip hidden characters in memory
+            with open('wazi-deploy/deployment_method.j2', 'r', encoding='utf-8') as f:
+                template = f.read()
+
+            sha_value = '$UPSTREAM_SHA'
+            compiled = template.replace('{{ env }}', 'DEV').replace('{{ env | lower }}', 'dev').replace('{{ app_version }}', '$UPSTREAM_VERSION').replace('{{ git_sha }}', sha_value[:7])
+            clean_method = compiled.replace('\x1a', '')
+
+            # Write out the clean deployment method directly in standard ISO8859-1 (ASCII)
+            with open('/tmp/wazi-deploy/deployment_method.yaml', 'w', encoding='iso-8859-1') as f:
+                f.write(clean_method)
+
+            # 2. Sanitize and write out the application manifest directly to /tmp in ISO8859-1
             with open('wazi-deploy/app_manifest.yaml', 'r', encoding='utf-8') as f:
                 manifest_text = f.read().replace('\x1a', '')
-            with open('/tmp/wazi-deploy/app_manifest.yaml', 'w', encoding='utf-8') as f:
+
+            with open('/tmp/wazi-deploy/app_manifest.yaml', 'w', encoding='iso-8859-1') as f:
                 f.write(manifest_text)
-
-            # 2. Sanitize and write out the deployment method directly to /tmp
-            with open('wazi-deploy/core_banking_method.yaml', 'r', encoding='utf-8') as f:
-                method_text = f.read().replace('\x1a', '')
-            with open('/tmp/wazi-deploy/deployment_method.tmp', 'w', encoding='utf-8') as f:
-                f.write(method_text)
             "
-
-            # Transcode from the perfectly clean /tmp file instead of the source workspace
-            iconv -f UTF-8 -t ISO8859-1 /tmp/wazi-deploy/deployment_method.tmp > /tmp/wazi-deploy/deployment_method.yaml
-            rm -f /tmp/wazi-deploy/deployment_method.tmp
 
             # Tag the clean configurations for the Wazi engine
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
@@ -147,8 +153,7 @@ jobs:
 
             mkdir -p ~/wazi-deploy-package
             tar -cvf ~/wazi-deploy-package/deployable.tar app_manifest.yaml deployment_method.yaml deployment_plan.yaml
-            echo "✅ Package ready"
-
+            echo "✅ Package ready
 
       - name: Fetch Package from USS
         run: |
