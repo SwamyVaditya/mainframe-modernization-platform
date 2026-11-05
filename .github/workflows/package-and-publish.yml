@@ -101,9 +101,16 @@ jobs:
             rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
 
 
-            # =====================================================================
-            # FIXED: Let Python remove the trailing Control-Z (\x1a) during conversion
-            # =====================================================================
+            # Dynamic Jinja2 compile simulation via inline python
+            python3 -c "
+            with open('wazi-deploy/deployment_method.j2', 'r', encoding='utf-8') as f:
+                template = f.read()
+            compiled = template.replace('{{ env }}', 'DEV').replace('{{ env | lower }}', 'dev').replace('{{ app_version }}', '$UPSTREAM_VERSION').replace('{{ git_sha }}', '$UPSTREAM_SHA[:7]')
+            with open('wazi-deploy/core_banking_method.yaml', 'w', encoding='utf-8') as f:
+                f.write(compiled)
+            "
+
+            # Strip out trailing Control-Z characters during ASCII conversion
             python3 -c "
             with open('wazi-deploy/app_manifest.yaml', 'r', encoding='utf-8') as f:
                 text = f.read().replace('\x1a', '')
@@ -111,6 +118,7 @@ jobs:
                 f.write(text)
             "
 
+            
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/core_banking_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null || iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
             
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml

@@ -1,6 +1,5 @@
 {# Production-grade Jinja2 template for DeploymentMethod #}
-{# Usage: python3 -m jinja2 deployment_method.j2 -D env=DEV -D app_version=1.0.123 > deployment_method.yaml #}
-apiVersion: wazideploy.【entity-ibm¦canonical_name=IBM】.com/v1
+apiVersion: wazideploy.ibm.com/v1
 kind: DeploymentMethod
 metadata:
   name: core-banking-deploy-method-{{ env | lower }}
@@ -8,15 +7,18 @@ metadata:
   description: Core Banking Platform - Deploy to {{ env }} - Generic, application-level - Generated from template
   environment: {{ env }}
 activities:
-    - name: Deploy COBOL Artifacts to {{ env }}
+  - name: Deploy COBOL Artifacts to {{ env }}
     description: Deploy all COBOL LOAD modules to {{ env }} environment
     actions:
-            - name: Deploy LOAD Modules to {{ env }}
+      - name: Deploy LOAD Modules to {{ env }}
         description: Generic action - handles any LOAD from manifest
+        # 👇 Dynamic binding selector rule injection
+        selector:
+          type: LOAD
         steps:
-                    - name: Deploy LOAD to {{ env }}
+          - name: Deploy LOAD to {{ env }}
             properties:
-                            - key: template
+              - key: template
                 value: |
                   echo "=========================================="
                   echo "Environment: {{ env }}"
