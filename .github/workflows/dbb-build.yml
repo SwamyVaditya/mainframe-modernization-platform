@@ -3,6 +3,11 @@ name: DBB Build - Production Grade (Incremental + SonarQube + ZUnit)
 on:
   push:
     branches: [main]
+
+    # 👇 CONDITION: Only triggers if files change outside of documentation
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
