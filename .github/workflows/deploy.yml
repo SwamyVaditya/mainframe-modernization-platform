@@ -26,7 +26,8 @@ jobs:
   deploy-dev:
     name: Deploy to DEV (Auto)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    # 👇 CRITICAL GATEWAY: Only runs if the packaging event ended in success!
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     environment: DEV
     steps:
       - name: Checkout Code

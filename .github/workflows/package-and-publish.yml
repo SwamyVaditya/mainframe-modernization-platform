@@ -102,6 +102,13 @@ jobs:
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/app_manifest.yaml > /tmp/wazi-deploy/app_manifest.yaml
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/core_banking_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null || iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
             
+            # =====================================================================
+            # FIXED: Explicitly strip out any hidden Control-Z (\x1a) junk characters 
+            # =====================================================================
+            sed -i 's/\x1a//g' /tmp/wazi-deploy/app_manifest.yaml
+            # =====================================================================
+
+
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
             
             echo "=== Executing Wazi Package Engine ==="
