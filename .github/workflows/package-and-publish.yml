@@ -43,7 +43,16 @@ jobs:
             echo "=== Production Package - ${{ env.APP_NAME }} ${{ env.BUILD_VERSION }} ==="
             echo "Pattern: BuildReport.json -> ApplicationManifest (dynamic)"
             
-            cd ~/work/workspace/mainframe-modernization-platform
+            mkdir -p ~/work/workspace
+            cd ~/work/workspace
+            # CRITICAL: Check if git repo, re-clone if not (fixes 'origin does not appear' error)
+            if [ ! -d "mainframe-modernization-platform/.git" ]; then
+              echo "Not a git repo, re-cloning..."
+              rm -rf mainframe-modernization-platform
+              git clone https://github.com/SwamyVaditya/mainframe-modernization-platform.git
+            fi
+
+            cd mainframe-modernization-platform
 
             # CRITICAL: Pull latest code with wazi-deploy/ and scripts/ folders!
             git pull origin main
