@@ -102,15 +102,11 @@ jobs:
 
 
             # Dynamic Jinja2 compile simulation via inline python
-            # =====================================================================
-            # FIXED: Let Python handle string slicing to prevent Zsh math parse errors
-            # =====================================================================
             python3 -c "
             import os
             with open('wazi-deploy/deployment_method.j2', 'r', encoding='utf-8') as f:
                 template = f.read()
 
-            # Pass parameters cleanly and slice the SHA safely inside native Python logic
             sha_value = '$UPSTREAM_SHA'
             compiled = template.replace('{{ env }}', 'DEV').replace('{{ env | lower }}', 'dev').replace('{{ app_version }}', '$UPSTREAM_VERSION').replace('{{ git_sha }}', sha_value[:7])
 
@@ -118,16 +114,27 @@ jobs:
                 f.write(compiled)
             "
 
+            # Clean character translation alignments using unified /tmp targets
+            rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
 
-            # Strip out trailing Control-Z characters during ASCII conversion
+            # =====================================================================
+            # FIXED: Let Python scrub the trailing Control-Z (\x1a) from BOTH files
+            # =====================================================================
             python3 -c "
+            # 1. Sanitize the application manifest file buffer
             with open('wazi-deploy/app_manifest.yaml', 'r', encoding='utf-8') as f:
-                text = f.read().replace('\x1a', '')
+                manifest_text = f.read().replace('\x1a', '')
             with open('/tmp/wazi-deploy/app_manifest.yaml', 'w', encoding='utf-8') as f:
-                f.write(text)
+                f.write(manifest_text)
+
+            # 2. Sanitize the compiled deployment method template file buffer
+            with open('wazi-deploy/core_banking_method.yaml', 'r', encoding='utf-8') as f:
+                method_text = f.read().replace('\x1a', '')
+            with open('/tmp/wazi-deploy/core_banking_method.yaml', 'w', encoding='utf-8') as f:
+                f.write(method_text)
             "
 
-
+            # Transcode clean sanitized scripts to mainframe native layout streams
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/core_banking_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null || iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
             
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
