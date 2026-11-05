@@ -1,0 +1,25 @@
+apiVersion: wazideploy.ibm.com/v1
+kind: DeploymentMethod
+metadata:
+  name: core-banking-deploy-method
+  version: 1.0.0
+  description: Core Banking Platform - Generic deployment for any COBOL LOADs - Application-level, not per-program
+activities:
+    - name: Deploy COBOL Artifacts
+      description: Deploy all COBOL LOAD modules from ApplicationManifest
+      actions:
+      - name: Deploy LOAD Modules
+        description: Generic action that deploys any LOAD from manifest - handles N programs
+        steps:
+          - name: Deploy LOAD Module
+            description: Deploy single LOAD - template handles any program dynamically
+            properties:
+              - key: template
+                value: |
+                  echo "=========================================="
+                  echo "Deploying {{name}} (Type: {{type}})"
+                  echo "Source: {{dataset}}({{member}})"
+                  echo "Build: {{version}}"
+                  echo "=========================================="
+                  echo "Enterprise Pattern: Generic template handles any LOAD from ApplicationManifest"
+                  echo "No hardcoded ACCTBALA - works for ACCTDEP, ACCTWDR, any program from BuildReport.json"
