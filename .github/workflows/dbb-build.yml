@@ -114,7 +114,7 @@ jobs:
             -Dsonar.qualitygate.wait=true
 
       - name: Check Quality Gate
-        uses: sonarsource/sonarqube-quality-gate-action@v1
+        uses: sonarsource/sonarqube-quality-gate-action@v1.2.1
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -273,17 +273,17 @@ jobs:
     name: Production Build Summary
     runs-on: ubuntu-latest
     needs: [changed-files, security-scan, sonar-scan, dbb-build, zunit-tests]
-    if: always()
+    if: always() # Guarantees execution to populate dashboard metrics
     steps:
-    - name: Generate Executive Summary Markdown Report
-      run: |
-        echo "## 🚀 Enterprise Platform Execution Dashboard" >> $GITHUB_STEP_SUMMARY
-        echo "### Build Parameters" >> $GITHUB_STEP_SUMMARY
-        echo "* Application Asset Target Name: `${{ env.APP_NAME }}`" >> $GITHUB_STEP_SUMMARY
-        echo "* Pipeline Build Tracker ID: `${{ env.BUILD_VERSION }}`" >> $GITHUB_STEP_SUMMARY
-        echo "### Job Matrix Performance Mapping" >> $GITHUB_STEP_SUMMARY
-        echo "* Change Detection Execution: `${{ needs.changed-files.result }}`" >> $GITHUB_STEP_SUMMARY
-        echo "* Gitleaks Vulnerability Audit: `${{ needs.security-scan.result }}`" >> $GITHUB_STEP_SUMMARY
-        echo "* SonarQube Quality Gate Check: `${{ needs.sonar-scan.result }}`" >> $GITHUB_STEP_SUMMARY
-        echo "* Mainframe Compilation (DBB): `${{ needs.dbb-build.result }}`" >> $GITHUB_STEP_SUMMARY
-        echo "* ZUnit Structural Code Testing: `${{ needs.zunit-tests.result }}`" >> $GITHUB_STEP_SUMMARY
+      - name: Generate Executive Summary Markdown Report
+        run: |
+          echo "## 🚀 Enterprise Platform Execution Dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Parameters" >> $GITHUB_STEP_SUMMARY
+          echo "* **Application Asset Target Name:** \`${{ env.APP_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "* **Pipeline Build Tracker ID:** \`${{ env.BUILD_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "### Job Matrix Performance Mapping" >> $GITHUB_STEP_SUMMARY
+          echo "* **Change Detection Execution:** \`${{ needs.changed-files.result }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "* **Gitleaks Vulnerability Audit:** \`${{ needs.security-scan.result }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "* **SonarQube Quality Gate Check:** \`${{ needs.sonar-scan.result }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "* **Mainframe Compilation (DBB):** \`${{ needs.dbb-build.result }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "* **ZUnit Structural Code Testing:** \`${{ needs.zunit-tests.result }}\`" >> $GITHUB_STEP_SUMMARY
