@@ -111,7 +111,7 @@ jobs:
                 f.write(text)
             "
 
-            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/core_banking_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null || iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
+            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null || iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
             
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
             
