@@ -48,5 +48,5 @@
            END-IF
 
            CLOSE ACCT-FILE
-           DISPLAY 'NEW TESTING 1 - CD WORKFLOWS ... '
+           DISPLAY 'NEW TESTING 2 - CD WORKFLOWS ... '
            GOBACK.
