@@ -53,7 +53,7 @@ def generate_manifest(build_report_path, output_path, app_version, git_sha):
     print(f"Found {len(artifacts)} LOAD module(s): {[a['name'] for a in artifacts]}")
     
     # Generate ApplicationManifest YAML (Fixing the missing hash property constraint)
-    manifest_content = f"""wazideploy.ibm.com/v1
+    manifest_content = f"""apiVersion: wazideploy.ibm.com/v1
 kind: ApplicationManifest
 metadata:
   name: core-banking-app
