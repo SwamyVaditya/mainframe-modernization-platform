@@ -72,13 +72,20 @@ jobs:
             cd /tmp/wazi-deploy-dev
             tar -xf ~/work/workspace/deployable.tar
             
-            # =====================================================================
-            # FIXED SUB-MODULE ENGINE INVOKE: Target the standalone deploy sub-module
-            # =====================================================================
+            # Absolute Python Module Invocation (Bypasses Argument Parser Bug)
+            # python3 -c "from wazideploy.util.wd import main; import sys; sys.argv=['wazideploy-deploy', '-dp', '/tmp/wazi-deploy-dev/deployment_plan.yaml']; main()"
+
             python3 -c "
+            from wazideploy.util.wd import main
             import sys
-            from wazideploy.deploy import main
-            sys.argv = ['wazideploy-deploy', '-dp', '/tmp/wazi-deploy-dev/deployment_plan.yaml']
+
+            sys.argv=[
+            'wazideploy-deploy',
+            '-dm','/tmp/wazi-deploy-dev/deployment_method.yaml',
+            '-m','/tmp/wazi-deploy-dev/app_manifest.yaml',
+            '-dp','/tmp/wazi-deploy-dev/deployment_plan.yaml'
+            ]
+
             main()
             "
 
