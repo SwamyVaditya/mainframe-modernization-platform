@@ -73,12 +73,12 @@ jobs:
             tar -xf ~/work/workspace/deployable.tar
             
             # =====================================================================
-            # FIXED VERB INVOCATION: Explicitly pass the 'deploy' action token
+            # FIXED SUB-MODULE ENGINE INVOKE: Target the standalone deploy sub-module
             # =====================================================================
             python3 -c "
             import sys
-            from wazideploy.util.wd import main
-            sys.argv = ['wazideploy', 'deploy', '-dp', '/tmp/wazi-deploy-dev/deployment_plan.yaml']
+            from wazideploy.deploy import main
+            sys.argv = ['wazideploy-deploy', '-dp', '/tmp/wazi-deploy-dev/deployment_plan.yaml']
             main()
             "
 
