@@ -23,9 +23,9 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      # =====================================================================
+      # ==========================================================================
       # FIXED: Securely download authentic BuildReport from the triggering CI run
-      # =====================================================================
+      # ==========================================================================
       - name: Download Build Report Artifact
         if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/download-artifact@v4
@@ -102,7 +102,7 @@ jobs:
             python3 -c "
             # 1. Fix the invalid apiVersion string, scrub \x1a, and write straight to /tmp
             with open('wazi-deploy/app_manifest.yaml', 'r', encoding='utf-8') as f:
-                manifest_text = f.read().replace('\x1a', '').replace('apiVersion: ://ibm.com', 'apiVersion: ://ibm.com')
+                manifest_text = f.read().replace('\x1a', '')
             with open('/tmp/wazi-deploy/app_manifest.yaml', 'w', encoding='iso-8859-1') as f:
                 f.write(manifest_text)
 
@@ -123,6 +123,14 @@ jobs:
             mkdir -p ~/wazi-deploy-package
             tar -cvf ~/wazi-deploy-package/deployable.tar app_manifest.yaml deployment_method.yaml deployment_plan.yaml
             echo "✅ Package ready"
+
+      - name: Fetch Package from USS
+        run: |
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -o WarnWeakCrypto=no \
+            ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/wazi-deploy-package/deployable.tar ./deployable.tar
+          
+          echo "=== Local Package Verification ==="
+          ls -l deployable.tar
 
       - name: Publish to JFrog Artifactory
         env:

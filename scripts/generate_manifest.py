@@ -58,7 +58,7 @@ kind: ApplicationManifest
 metadata:
   name: core-banking-app
   version: {app_version}
-  description: Core Banking Platform - All artifacts from DBB Build {git_sha[:7]}
+  description: Core Banking Platform - All artifacts from DBB Build {git_sha[:7]} - Dynamic from BuildReport.json
 artifacts:
 """
     for artifact in artifacts:
