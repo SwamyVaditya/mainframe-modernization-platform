@@ -97,11 +97,11 @@ jobs:
             # Invoke generation utility script
             python3 scripts/generate_manifest.py BuildReport.json wazi-deploy/app_manifest.yaml "$UPSTREAM_VERSION" "$UPSTREAM_SHA"
 
-            # Clean out working deployment space
+            # Clean out working deployment space completely
             rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
 
             # =====================================================================
-            # FIXED: Let Python handle Jinja2 Compile, Stripping, and ISO transcode
+            # FIXED: Let Python compile, sanitize, and write STRAIGHT to /tmp/
             # =====================================================================
             python3 -c "
             import os
@@ -114,7 +114,7 @@ jobs:
             compiled = template.replace('{{ env }}', 'DEV').replace('{{ env | lower }}', 'dev').replace('{{ app_version }}', '$UPSTREAM_VERSION').replace('{{ git_sha }}', sha_value[:7])
             clean_method = compiled.replace('\x1a', '')
 
-            # Write out the clean deployment method directly in standard ISO8859-1 (ASCII)
+            # Write directly to the final deployment directory in standard ISO8859-1 (ASCII)
             with open('/tmp/wazi-deploy/deployment_method.yaml', 'w', encoding='iso-8859-1') as f:
                 f.write(clean_method)
 
@@ -125,6 +125,10 @@ jobs:
             with open('/tmp/wazi-deploy/app_manifest.yaml', 'w', encoding='iso-8859-1') as f:
                 f.write(manifest_text)
             "
+
+            # =====================================================================
+            # CRITICAL FIX: REMOVED THE DUPLICATE ICONV LINE THAT WAS OVERWRITING YOUR FIX
+            # =====================================================================
 
             # Tag the clean configurations for the Wazi engine
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
