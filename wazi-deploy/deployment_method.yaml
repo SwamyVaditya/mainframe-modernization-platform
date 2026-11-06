@@ -3,10 +3,13 @@ kind: DeploymentMethod
 metadata:
   name: core-banking-deploy-method
   version: 1.0.0
-  description: Core Banking Platform - Generic deployment for any COBOL LOADs
+  description: Core Banking Platform - Generic deployment for any COBOL LOADs - Application-level, not per-program
 activities:
   - name: Deploy COBOL Artifacts
     description: Deploy all COBOL LOAD modules from ApplicationManifest
+    # 👇 SOLUTION: Schema-compliant artifact type filtering block 
+    types:
+      - name: LOAD
     actions:
       - name: Deploy LOAD Modules
         description: Generic action that deploys any LOAD from manifest - handles N programs
