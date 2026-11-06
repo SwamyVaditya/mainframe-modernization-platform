@@ -48,5 +48,5 @@
            END-IF
 
            CLOSE ACCT-FILE
-           DISPLAY 'TESTING WAZI DEPLOY WORKFLOWS ...'
+           DISPLAY 'FINAL TESTING - WAZI DEPLOY WORKFLOWS ...'
            GOBACK.
