@@ -102,18 +102,27 @@ jobs:
 
 
             # =====================================================================
-            # FIXED: Let Python remove the trailing Control-Z (\x1a) during conversion
+            # FIXED: Let Python remove trailing Control-Z (\x1a) from BOTH files
             # =====================================================================
             python3 -c "
+            # 1. Clean the application manifest
             with open('wazi-deploy/app_manifest.yaml', 'r', encoding='utf-8') as f:
                 text = f.read().replace('\x1a', '')
             with open('/tmp/wazi-deploy/app_manifest.yaml', 'w', encoding='utf-8') as f:
                 f.write(text)
+
+            # 2. Clean the deployment method file to prevent PyYAML reader loops
+            with open('wazi-deploy/deployment_method.yaml', 'r', encoding='utf-8') as f:
+                method_text = f.read().replace('\x1a', '')
+            with open('wazi-deploy/deployment_method.yaml', 'w', encoding='utf-8') as f:
+                f.write(method_text)
             "
 
-            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null || iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml
             
+            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null
+
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
+
             
             echo "=== Executing Wazi Package Engine ==="
             cd /tmp/wazi-deploy
