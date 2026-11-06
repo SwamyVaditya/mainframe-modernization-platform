@@ -72,8 +72,15 @@ jobs:
             cd /tmp/wazi-deploy-dev
             tar -xf ~/work/workspace/deployable.tar
             
-            # Absolute Python Module Invocation (Bypasses Argument Parser Bug)
-            python3 -c "from wazideploy.util.wd import main; import sys; sys.argv=['wazideploy-deploy', '-dp', '/tmp/wazi-deploy-dev/deployment_plan.yaml']; main()"
+            # =====================================================================
+            # FIXED VERB INVOCATION: Explicitly pass the 'deploy' action token
+            # =====================================================================
+            python3 -c "
+            import sys
+            from wazideploy.util.wd import main
+            sys.argv = ['wazideploy', 'deploy', '-dp', '/tmp/wazi-deploy-dev/deployment_plan.yaml']
+            main()
+            "
 
       - name: Smoke DEV and Rollback on Failure
         if: always()
