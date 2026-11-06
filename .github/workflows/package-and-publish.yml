@@ -118,7 +118,7 @@ jobs:
                 f.write(method_text)
             "
 
-            
+
             iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null
 
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
@@ -126,7 +126,7 @@ jobs:
             
             echo "=== Executing Wazi Package Engine ==="
             cd /tmp/wazi-deploy
-            wazideploy-package -dm deployment_method.yaml -m app_manifest.yaml -dp deployment_plan.yaml
+            wazideploy-package -dm deployment_method.yaml -m app_manifest.yaml -dp deployment_plan.yaml --verbose
             
             mkdir -p ~/wazi-deploy-package
             tar -cvf ~/wazi-deploy-package/deployable.tar app_manifest.yaml deployment_method.yaml deployment_plan.yaml

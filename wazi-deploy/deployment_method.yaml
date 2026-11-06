@@ -11,6 +11,7 @@ activities:
     actions:
       - name: Deploy LOAD Modules
         description: Generic action that deploys any LOAD from manifest - handles N programs
+        selector: type == 'LOAD'
         steps:
           - name: Deploy LOAD Module
             description: Deploy single LOAD - template handles any program dynamically
