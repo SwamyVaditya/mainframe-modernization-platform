@@ -100,32 +100,31 @@ jobs:
             # Clean out working deployment space completely
             rm -rf /tmp/wazi-deploy && mkdir -p /tmp/wazi-deploy
 
-            
+
             # =====================================================================
-            # FIXED: Inline Production Template with Perfect Two-Space Indentation
+            # FIXED: Schema-Compliant Inline Production Template
             # =====================================================================
             python3 -c "
             import os
 
-            # Define the clean, enterprise-grade deployment method blueprint template directly
+            # Perfect schema-aligned template: apiVersion fixed, environment removed, selector moved to step
             template_content = '''apiVersion: ://ibm.com
             kind: DeploymentMethod
             metadata:
               name: core-banking-deploy-method-{env_lower}
               version: {version}
               description: Core Banking Platform - Deploy to {env} - Generic, application-level
-              environment: {env}
             activities:
               - name: Deploy COBOL Artifacts to {env}
                 description: Deploy all COBOL LOAD modules from ApplicationManifest
                 actions:
                   - name: Deploy LOAD Modules to {env}
                     description: Generic action that deploys any LOAD from manifest - handles N programs
-                    selector:
-                      type: LOAD
                     steps:
                       - name: Deploy LOAD to {env}
                         description: Deploy single LOAD module dynamically
+                        selector:
+                          type: LOAD
                         properties:
                           - key: template
                             value: |
