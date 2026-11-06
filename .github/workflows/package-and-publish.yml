@@ -119,7 +119,7 @@ jobs:
             "
 
 
-            iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null
+            # iconv -f UTF-8 -t ISO8859-1 wazi-deploy/deployment_method.yaml > /tmp/wazi-deploy/deployment_method.yaml 2>/dev/null
 
             chtag -t -c ISO8859-1 /tmp/wazi-deploy/*.yaml
 
