@@ -73,7 +73,7 @@ jobs:
             tar -xf ~/work/workspace/deployable.tar
             
             # Absolute Python Module Invocation (Bypasses Argument Parser Bug)
-            python3 -c "from wazideploy.util.wd import main; import sys; sys.argv=['wazideploy-deploy', '-dp', 'deployment_plan.yaml']; main()"
+            python3 -c "from wazideploy.util.wd import main; import sys; sys.argv=['wazideploy-deploy', '-dp', '/tmp/wazi-deploy-dev/deployment_plan.yaml']; main()"
 
       - name: Smoke DEV and Rollback on Failure
         if: always()
