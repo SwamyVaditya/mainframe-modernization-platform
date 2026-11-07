@@ -135,16 +135,23 @@ jobs:
             . ~/.profile
             
             echo "=== Step 1: Allocating Isolated TEST Staging Partition ==="
-            # Allocate the target dataset library dynamically matching IBM Z Xplore ACS PDSE requirements
-            tsocmd "ALLOC DATASET('Z78651.TEST.LOAD') TRACKS SPACE(1,5) DIR(5) DSNTYPE(LIBRARY) RECFM(U) BLKSIZE(32760) NEW CATALOG" 2>/dev/null || true
-            
+            # Allocate the target PDSE (LIBRARY) matching IBM Z Xplore ACS requirements
+            tsocmd "ALLOC DD(TESTLOAD) DSN('Z78651.TEST.LOAD') TRACKS SPACE(1,5) DSNTYPE(LIBRARY) RECFM(U) BLKSIZE(32760) NEW CATALOG" || {
+              echo "Note: Dataset may already exist – continuing"
+            }
+
             echo "=== Step 2: Executing Package Promotion to TEST ==="
-            # Simulate enterprise cross-partition binary promotion loop via TSO Copy
-            tsocmd "OCOPY INDD('Z78651.BUILD.LOAD(ACCTBALA)') OUTDD('Z78651.TEST.LOAD(ACCTBALA)')" 2>/dev/null || true
-            
+            # Allocate source member and target member, then copy with OCOPY
+            tsocmd "ALLOC DD(INDD)  DSN('Z78651.BUILD.LOAD(ACCTBALA)') SHR REUSE"
+            tsocmd "ALLOC DD(OUTDD) DSN('Z78651.TEST.LOAD(ACCTBALA)') SHR REUSE"
+
+            tsocmd "OCOPY INDD(INDD) OUTDD(OUTDD) BINARY"
+
+            # Clean up the temporary DDs
+            tsocmd "FREE DD(INDD OUTDD)"
+
             echo "=== Step 3: Running Post-Deployment TEST Smoke Tests ==="
-            # 👇 VERIFIES INDEPENDENT PATH ISOLATION NATIVIVELY
-            if tsocmd "LISTDS 'Z78651.TEST.LOAD' MEMBERS" 2>&1 | grep ACCTBALA; then
+            if tsocmd "LISTDS 'Z78651.TEST.LOAD' MEMBERS" 2>&1 | grep -q ACCTBALA; then
               echo "✅ TEST promotion verified successful. Binary isolated inside Z78651.TEST.LOAD."
             else
               echo "🚨 TEST Smoke Test FAIL: Target member not found in TEST libraries."
@@ -175,16 +182,25 @@ jobs:
             export HISTFILE=/dev/null
             . ~/.profile
             
+
             echo "=== Step 1: Allocating Isolated PROD Partition ==="
-            tsocmd "ALLOC DATASET('Z78651.PROD.LOAD') TRACKS SPACE(1,5) DIR(5) DSNTYPE(LIBRARY) RECFM(U) BLKSIZE(32760) NEW CATALOG" 2>/dev/null || true
-            
-            # Real enterprise gate pattern: Copy from the verified staging library (TEST) to PROD
+            # Allocate the target PDSE (LIBRARY) matching IBM Z Xplore ACS requirements
+            tsocmd "ALLOC DD(PRODLOAD) DSN('Z78651.PROD.LOAD') TRACKS SPACE(1,5) DSNTYPE(LIBRARY) RECFM(U) BLKSIZE(32760) NEW CATALOG" || {
+              echo "Note: Dataset may already exist – continuing"
+            }
+
             echo "=== Step 2: Executing Package Promotion to PROD ==="
-            tsocmd "OCOPY INDD('Z78651.TEST.LOAD(ACCTBALA)') OUTDD('Z78651.PROD.LOAD(ACCTBALA)')" 2>/dev/null || true
-            
+            # Allocate source member (from verified TEST) and target member, then copy with OCOPY
+            tsocmd "ALLOC DD(INDD)  DSN('Z78651.TEST.LOAD(ACCTBALA)') SHR REUSE"
+            tsocmd "ALLOC DD(OUTDD) DSN('Z78651.PROD.LOAD(ACCTBALA)') SHR REUSE"
+
+            tsocmd "OCOPY INDD(INDD) OUTDD(OUTDD) BINARY"
+
+            # Clean up the temporary DDs
+            tsocmd "FREE DD(INDD OUTDD)"
+
             echo "=== Step 3: Running Post-Deployment PROD Smoke Tests ==="
-            # 👇 VERIFIES INDEPENDENT PATH ISOLATION NATIVIVELY
-            if tsocmd "LISTDS 'Z78651.PROD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA; then
+            if tsocmd "LISTDS 'Z78651.PROD.LOAD' MEMBERS" 2>&1 | grep -q ACCTBALA; then
               echo "✅ PROD promotion verified successful. Binary isolated inside Z78651.PROD.LOAD."
             else
               echo "🚨 PROD Smoke Test FAIL: Target member not found in Production libraries."
