@@ -130,9 +130,28 @@ jobs:
           password: ${{ secrets.ZOS_PASSWORD }}
           port: 22
           script: |
-            echo "=== Deploying to TEST Environment ==="
-            # In an enterprise pipeline, this references your TEST target dataset paths
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ TEST verification successful."
+            set -e
+            export HISTFILE=/dev/null
+            . ~/.profile
+            
+            echo "=== Step 1: Allocating Isolated TEST Staging Partition ==="
+            # Allocate the target dataset library dynamically matching IBM Z Xplore ACS PDSE requirements
+            tsocmd "ALLOC DATASET('Z78651.TEST.LOAD') TRACKS SPACE(1,5) DIR(5) DSNTYPE(LIBRARY) RECFM(U) BLKSIZE(32760) NEW CATALOG" 2>/dev/null || true
+            
+            echo "=== Step 2: Executing Package Promotion to TEST ==="
+            # Simulate enterprise cross-partition binary promotion loop via TSO Copy
+            tsocmd "OCOPY INDD('Z78651.BUILD.LOAD(ACCTBALA)') OUTDD('Z78651.TEST.LOAD(ACCTBALA)')" 2>/dev/null || true
+            
+            echo "=== Step 3: Running Post-Deployment TEST Smoke Tests ==="
+            # 👇 VERIFIES INDEPENDENT PATH ISOLATION NATIVIVELY
+            if tsocmd "LISTDS 'Z78651.TEST.LOAD' MEMBERS" 2>&1 | grep ACCTBALA; then
+              echo "✅ TEST promotion verified successful. Binary isolated inside Z78651.TEST.LOAD."
+            else
+              echo "🚨 TEST Smoke Test FAIL: Target member not found in TEST libraries."
+              exit 1
+            fi
+
+
 
   # ============================================================================
   # JOB 3: PROD DEPLOYMENT (MANUAL APPROVAL + PRODUCTION ENVIRONMENT GATEWAY)
@@ -144,7 +163,7 @@ jobs:
     if: ${{ needs.deploy-test.result == 'success' }}
     environment: PROD
     steps:
-      - name: Deploy to PROD Environment
+      - name: Deploy to Production Region
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ZOS_HOST }}
@@ -152,8 +171,25 @@ jobs:
           password: ${{ secrets.ZOS_PASSWORD }}
           port: 22
           script: |
-            echo "=== Deploying to Production Region ==="
-            tsocmd "LISTDS 'Z78651.BUILD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA && echo "✅ PROD verification successful."
+            set -e
+            export HISTFILE=/dev/null
+            . ~/.profile
+            
+            echo "=== Step 1: Allocating Isolated PROD Partition ==="
+            tsocmd "ALLOC DATASET('Z78651.PROD.LOAD') TRACKS SPACE(1,5) DIR(5) DSNTYPE(LIBRARY) RECFM(U) BLKSIZE(32760) NEW CATALOG" 2>/dev/null || true
+            
+            # Real enterprise gate pattern: Copy from the verified staging library (TEST) to PROD
+            echo "=== Step 2: Executing Package Promotion to PROD ==="
+            tsocmd "OCOPY INDD('Z78651.TEST.LOAD(ACCTBALA)') OUTDD('Z78651.PROD.LOAD(ACCTBALA)')" 2>/dev/null || true
+            
+            echo "=== Step 3: Running Post-Deployment PROD Smoke Tests ==="
+            # 👇 VERIFIES INDEPENDENT PATH ISOLATION NATIVIVELY
+            if tsocmd "LISTDS 'Z78651.PROD.LOAD' MEMBERS" 2>&1 | grep ACCTBALA; then
+              echo "✅ PROD promotion verified successful. Binary isolated inside Z78651.PROD.LOAD."
+            else
+              echo "🚨 PROD Smoke Test FAIL: Target member not found in Production libraries."
+              exit 1
+            fi
 
   # =====================================================================
   # JOB 4: EXECUTIVE CONTINUOUS DELIVERY SUMMARY DASHBOARD
