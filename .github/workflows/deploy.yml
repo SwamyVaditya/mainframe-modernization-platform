@@ -231,14 +231,23 @@ jobs:
     steps:
       - name: Generate Executive CD Markdown Report
         run: |
-          # Safely calculate matching version strings across workflow runs
-          UPSTREAM_VERSION="1.0.${{ github.event.workflow_run.run_number || github.run_number }}"
-          
+          sudo apt-get install -y sshpass -qq
+          mkdir -p ~/.ssh && echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
+
+          echo "=== Fetching True Release Footprint from Mainframe ==="
+          # 👇 DYNAMICALLY RESOLVES EXCLUSIVELY FROM THE SOURCE OF TRUTH (e.g., 1.0.119)
+          UPSTREAM_VERSION=$(sshpass -p "${{ secrets.ZOS_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o WarnWeakCrypto=no \
+            ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }} "cat ~/wazi-deploy-package/active_version.txt" | tr -d '\r\n')
+
+          if [ -z "$UPSTREAM_VERSION" ]; then
+            UPSTREAM_VERSION="1.0.${{ github.run_number }} (Local Fallback)"
+          fi
+
           # Map clean user-friendly emojis to execution statuses
           DEV_STATUS="${{ needs.deploy-dev.result == 'success' && '🟢 Passed' || (needs.deploy-dev.result == 'failure' && '🔴 Failed' || '🟡 Skipped') }}"
           TEST_STATUS="${{ needs.deploy-test.result == 'success' && '🟢 Passed' || (needs.deploy-test.result == 'failure' && '🔴 Failed' || '🟡 Pending / Skipped') }}"
           PROD_STATUS="${{ needs.deploy-prod.result == 'success' && '🟢 Passed' || (needs.deploy-prod.result == 'failure' && '🔴 Failed' || '🟡 Pending / Skipped') }}"
-          
+
           echo "## 🚀 Continuous Delivery Execution Dashboard" >> $GITHUB_STEP_SUMMARY
           echo "### Release Identification Parameters" >> $GITHUB_STEP_SUMMARY
           echo "* **Application Asset Target Name:** \`core-banking-app\`" >> $GITHUB_STEP_SUMMARY
