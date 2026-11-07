@@ -39,7 +39,8 @@ jobs:
           JFROG_USER: ${{ secrets.JFROG_USER }}
           JFROG_TOKEN: ${{ secrets.JFROG_TOKEN }}
         run: |
-          UPSTREAM_VERSION="1.0.${{ github.event.workflow_run.run_number || github.run_number }}"
+          # 👇 FIXED: Correctly extracts the upstream packaging run ID (e.g., 116) instead of the local deployment run ID
+          UPSTREAM_VERSION="1.0.${{ github.event.workflow_run.run_number }}"
           TARGET_URL="$JFROG_URL/artifactory/mainframe-loads-local/core-banking-app/$UPSTREAM_VERSION/deployable.tar"
           
           echo "=== Fetching Immutable Build Bundle: v$UPSTREAM_VERSION ==="
@@ -48,7 +49,9 @@ jobs:
       - name: Transfer Archive to Mainframe Staging Area
         run: |
           sudo apt-get install -y sshpass -qq
-          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no \
+          mkdir -p ~/.ssh && echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
+          # Transfer the cleanly fetched JFrog package directly to your workspace staging area
+          sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -o WarnWeakCrypto=no \
             ./deployable.tar ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }}:~/work/workspace/deployable.tar
 
       - name: Execute Wazi Deploy Live Phase on DEV
