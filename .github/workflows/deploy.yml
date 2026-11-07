@@ -1,5 +1,5 @@
 # Deploy - Production CD (JFrog -> Wazi -> Smoke Tests -> Rollback)
-name: Deploy - Production CD
+name: Deploy
 
 on:
   workflow_run:
