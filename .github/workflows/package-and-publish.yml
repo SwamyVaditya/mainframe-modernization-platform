@@ -127,7 +127,7 @@ jobs:
             # =====================================================================
             # FIXED: Write the true version identifier out to a persistent file
             # =====================================================================
-            echo "1.0.${{ github.run_number }}" > ~/wazi-deploy-package/active_version.txt
+            echo "$UPSTREAM_VERSION" > ~/wazi-deploy-package/active_version.txt
 
 
       - name: Fetch Package from USS
