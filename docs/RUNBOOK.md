@@ -355,7 +355,8 @@ ModuleNotFoundError: No module named 'attr'
 ```
 
 **What was tried (WRONG PATTERN - DO NOT USE):**
-Uploading wheels `attrs-26.1.0`, `jsonschema-4.17.3`, `pyrsistent-0.20.0`, `Whoosh-2.7.4` to `~/wheels/` and extracting them to `~/.local/lib/python3.9/site-packages/` with `_BPXK_AUTOCVT=ON`. Auto-conversion treated `.pyc` binaries as text, corrupting them with `
+Uploading wheels `attrs-26.1.0`, `jsonschema-4.17.3`, `pyrsistent-0.20.0`, `Whoosh-2.7.4` to `~/wheels/` and extracting them to `~/.local/lib/python3.9/site-packages/` with `_BPXK_AUTOCVT=ON`. Auto-conversion treated `.pyc` binaries as text, corrupting them with `
+
 `. A `git reset --hard` also purged untracked dependency dirs.
 
 Xplore is a shared educational LPAR with no `pypi.org` access. Adding custom packages to `~/.local` conflicts with the managed environment in `/usr/lpp/` and violates LPAR usage policy. Do not use this pattern.
@@ -422,43 +423,78 @@ with open('/tmp/wazi-deploy/deployment_method.yaml', 'w', encoding='iso-8859-1',
 
 ---
 
-### INC-14. Wazi Deploy Schema Violation - selector vs selectors
+### INC-14. Wazi Deploy Schema Violation - `*** No item found` - Root Cause: `is_artifact` + `types`
 
 **Symptom:**
+```
+** Collecting items for Deploy COBOL Artifacts/Deploy LOAD Modules/Deploy LOAD Module
+*** No item found
+```
+`deployment_plan.yaml` has `artifacts: []` - empty, even though `app_manifest.yaml` lists ACCTBALA.
+
+**What was tried first (WRONG):**
+```yaml
+# Legacy templates - rejected by Wazi 3.0 strict schema
+selector: {type: LOAD}   # at action level - invalid
+selectors:               # at step level - also invalid for this install
+  - type: LOAD
+```
+Error:
 ```
 Additional properties are not allowed ('selector' was unexpected) - Path: $.activities[0].actions[0]
 ```
 
-**Root Cause:** Legacy templates put `selector: {type: LOAD}` at the action level. Wazi Deploy 3.0 strict OpenAPI schema rejects it. It requires `selectors` (plural, list) inside each step.
+**Root Cause - Found by reading the on-system JSON schema:**
+The Wazi Deploy JSON schema files on z/OS define the structural model for `DeploymentMethod`. In that schema:
+- `selector` / `selectors` / `type` do NOT exist at Activity, Action, or Step nodes.
+- Artifact binding is driven by `is_artifact` (boolean) and `types` (array) at the **Activity** level.
+- By default `is_artifact` evaluates to `false`. The package engine then treats the method as a generic setup task (clear folder, allocate dataset) and skips `app_manifest.yaml` entirely - hence `*** No item found`.
 
-**Fix:** Valid Wazi 3.0 structure:
-
+**Fix - Schema-validated `deployment_method.yaml`:**
 ```yaml
 apiVersion: wazideploy.ibm.com/v1
 kind: DeploymentMethod
 metadata:
-  name: core-banking-deploy-method-dev
+  name: core-banking-deploy-method
   version: 1.0.0
-  description: Core Banking Platform - Deploy to DEV - Generic, application-level
+  description: Core Banking Platform - Generic deployment for any COBOL LOADs - Application-level, not per-program
 activities:
-  - name: Deploy COBOL Artifacts to DEV
+  - name: Deploy COBOL Artifacts
+    description: Deploy all COBOL LOAD modules from ApplicationManifest
+    is_artifact: true
+    types:
+      - name: LOAD
     actions:
-      - name: Deploy LOAD Modules to DEV
+      - name: Deploy LOAD Modules
+        description: Generic action that deploys any LOAD from manifest - handles N programs
         steps:
-          - name: Deploy LOAD to DEV
-            selectors:
-              - type: LOAD
+          - name: Deploy LOAD Module
+            description: Deploy single LOAD - template handles any program dynamically
             properties:
               - key: template
                 value: |
                   echo "Deploying {{name}} (Type: {{type}})"
                   echo "Source: {{dataset}}({{member}})"
-                  echo "Target: Z78651.DEV.LOAD"
+                  echo "Build: {{version}}"
 ```
 
-**Prevention:** Validate `apiVersion: wazideploy.ibm.com/v1` - no space after the dot, no `://` typo. The string `apiVersion: ://ibm.com` in some drafts is invalid.
+**Verification - GREEN:**
+```
+** Collecting items for Deploy COBOL Artifacts/Deploy LOAD Modules/Deploy LOAD Module
+*** 1 item found [ACCTBALA.LOAD]
+```
+In `deployment_plan.yaml`:
+```yaml
+artifacts:
+  - name: ACCTBALA
+    type: LOAD
+    hash: hash_acctbala_1c348d9
+```
 
----
+**Prevention:**
+- Validate `apiVersion: wazideploy.ibm.com/v1` - no space after the dot, no `://` typo. The string `apiVersion: ://ibm.com` in some drafts is invalid.
+- Do NOT use `selector` / `selectors` on this install. Use `is_artifact: true` + `types: [{name: LOAD}]` at Activity level.
+- Do NOT copy a `deploy.yml` snippet that sets `PYTHONPATH=$HOME/.local/...` or `_BPXK_AUTOCVT=ON` - that is the forbidden `~/.local` pattern. Use only `/usr/lpp/IBM/gdp/dependencies/`.
 
 ### INC-15. Cross-Partition Promotion - MVS Allocation Mismatches
 
