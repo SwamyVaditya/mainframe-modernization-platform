@@ -33,17 +33,28 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+
       - name: Fetch Deployment Package from JFrog Artifactory
         env:
           JFROG_URL: ${{ secrets.JFROG_URL }}
           JFROG_USER: ${{ secrets.JFROG_USER }}
           JFROG_TOKEN: ${{ secrets.JFROG_TOKEN }}
         run: |
-          # 👇 FIXED: Correctly extracts the upstream packaging run ID (e.g., 116) instead of the local deployment run ID
-          UPSTREAM_VERSION="1.0.${{ github.event.workflow_run.run_number }}"
-          TARGET_URL="$JFROG_URL/artifactory/mainframe-loads-local/core-banking-app/$UPSTREAM_VERSION/deployable.tar"
+          sudo apt-get install -y sshpass -qq
+          mkdir -p ~/.ssh && echo -e "Host *\n  StrictHostKeyChecking no" > ~/.ssh/config
           
-          echo "=== Fetching Immutable Build Bundle: v$UPSTREAM_VERSION ==="
+          echo "=== Step 1: Querying Mainframe for Upstream Version ==="
+          # Read the true version identifier directly from your persistent file
+          VERSION_TOKEN=$(sshpass -p "${{ secrets.ZOS_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.ZOS_USER }}@${{ secrets.ZOS_HOST }} "cat ~/wazi-deploy-package/active_version.txt" | tr -d '\r\n')
+          
+          if [ -z "$VERSION_TOKEN" ]; then
+            echo "Warning: Version token file not found. Falling back to local run number tracking."
+            VERSION_TOKEN="1.0.${{ github.run_number }}"
+          fi
+          
+          echo "=== Step 2: Fetching Build Bundle: v$VERSION_TOKEN ==="
+          TARGET_URL="$JFROG_URL/artifactory/mainframe-loads-local/core-banking-app/$VERSION_TOKEN/deployable.tar"
           curl -f -u "$JFROG_USER:$JFROG_TOKEN" -o deployable.tar "$TARGET_URL"
 
       - name: Transfer Archive to Mainframe Staging Area

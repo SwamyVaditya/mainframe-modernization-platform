@@ -124,6 +124,12 @@ jobs:
             tar -cvf ~/wazi-deploy-package/deployable.tar app_manifest.yaml deployment_method.yaml deployment_plan.yaml
             echo "✅ Package ready"
 
+            # =====================================================================
+            # FIXED: Write the true version identifier out to a persistent file
+            # =====================================================================
+            echo "1.0.${{ github.run_number }}" > ~/wazi-deploy-package/active_version.txt
+
+
       - name: Fetch Package from USS
         run: |
           sshpass -p "${{ secrets.ZOS_PASSWORD }}" scp -o StrictHostKeyChecking=no -o WarnWeakCrypto=no \
