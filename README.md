@@ -7,9 +7,19 @@
 
 ---
 
+## Evidence
+
+Verified GREEN runs with screenshots + logs: [docs/EVIDENCE.md](docs/EVIDENCE.md)
+
+- `*** 1 item found [ACCTBALA.LOAD]` - schema fix for Wazi Deploy
+- JFrog `1.0.115 / deployable.tar` - SHA256 `20c66b2f...332`
+- DEV / TEST / PROD - all Passed, `Z78651.PROD.LOAD` verified
+
+---
+
 ## What This Is
 
-A complete, end-to-end mainframe CI/CD platform, not a tutorial build:
+A complete, end-to-end mainframe CI/CD platform:
 
 ```
 PR -> DBB Build -> Package and Publish -> JFrog Artifactory -> Deploy -> DEV / TEST / PROD
