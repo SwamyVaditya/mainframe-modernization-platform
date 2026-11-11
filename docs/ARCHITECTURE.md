@@ -25,49 +25,49 @@ Production-grade Core Banking Account Balance service (ACCTBALA) modernized from
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ Developer Workstation (Windows)                                         │
 │  VS Code                                                                │
-│   ├─ Zowe Explorer v3.6.0 (profiles: zosmf, ssh)                         │
-│   ├─ Z Open Editor v6.9.0 (User Build)                                   │
+│   ├─ Zowe Explorer v3.6.0 (profiles: zosmf, ssh)                        │
+│   ├─ Z Open Editor v6.9.0 (User Build)                                  │
 │   │   └─ zapp.yaml -> application-conf/* -> build.groovy                │
 │   └─ Git (main) -> GitHub: SwamyVaditya/mainframe-modernization-platform│
 └──────────────────────────────┬──────────────────────────────────────────┘
-                                │ z/OSMF REST + SSH (204.90.115.200:10443)
+                               │ z/OSMF REST + SSH (204.90.115.200:10443)
 ┌──────────────────────────────▼──────────────────────────────────────────┐
-│ z/OS 3.1 - Xplore LPAR (Z78651)                                          │
-│                                                                          │
-│ USS: /z/z78651/work/workspace/                                           │
-│  ├─ mainframe-modernization-platform/                                     │
-│  │   ├─ cobol/ACCTBALA.cbl (ibm-1047 via .gitattributes)                 │
-│  │   ├─ copybook/ACCTREC.cpy                                              │
-│  │   ├─ application-conf/ (file.properties, Cobol.properties, etc.)      │
-│  │   └─ zapp.yaml                                                         │
-│  ├─ logs/ (BuildReport.json, ACCTBALA.log)                                │
-│  └─ dbb-zappbuild/ (zAppBuild 3.14.0-BASE)                                │
-│      ├─ build.groovy --workspace ... --hlq Z78651.BUILD --userBuild      │
-│      └─ build-conf/ (default Cobol.properties)                           │
-│      └─ languages/Cobol.groovy -> creates MVSExec                        │
-│                                                                          │
-│ MVS: HLQ Z78651.BUILD                                                    │
+│ z/OS 3.1 - Xplore LPAR (Z78651)                                         │
+│                                                                         │
+│ USS: /z/z78651/work/workspace/                                          │
+│  ├─ mainframe-modernization-platform/                                   │
+│  │   ├─ cobol/ACCTBALA.cbl (ibm-1047 via .gitattributes)                │
+│  │   ├─ copybook/ACCTREC.cpy                                            │
+│  │   ├─ application-conf/ (file.properties, Cobol.properties, etc.)     │
+│  │   └─ zapp.yaml                                                       │
+│  ├─ logs/ (BuildReport.json, ACCTBALA.log)                              │
+│  └─ dbb-zappbuild/ (zAppBuild 3.14.0-BASE)                              │
+│      ├─ build.groovy --workspace ... --hlq Z78651.BUILD --userBuild     │
+│      └─ build-conf/ (default Cobol.properties)                          │
+│      └─ languages/Cobol.groovy -> creates MVSExec                       │
+│                                                                         │
+│ MVS: HLQ Z78651.BUILD                                                   │
 │  ├─ BUILD.COBOL (PDS)   <- CopyToPDS from USS cobol/*.cbl               │
 │  ├─ BUILD.COPY  (PDS)   <- ACCTREC from copybook/*.cpy (resolved true)  │
-│  ├─ BUILD.OBJ   (PDS)   <- IGYCRCTL OBJECT                                │
-│  ├─ BUILD.DBRM  (PDS)   <- DBRM (if SQL)                                  │
-│  └─ BUILD.LOAD  (PDSE LIBRARY) <- IEWBLINK load module                   │
-│                                                                          │
-│ Compiler: IGY650.SIGYCOMP (COBOL 6.5.0) via TASKLIB                       │
-│           Found via LISTALC (not IGY.V6R4M0.SIGYCOMP)                    │
-│ Binder:   CEE.SCEELKED via TMP allocation                                 │
-│           Found via LISTCAT LEVEL(CEE) (not CBC.V2R4M0.SCEELKED)          │
-│ Runtime:  CEE.SCEERUN, DSND10.SDSNLOAD (LINKLIST)                         │
-│                                                                          │
-│ Wazi Deploy 3.0.0 (/usr/lpp/IBM/gdp/)                                     │
+│  ├─ BUILD.OBJ   (PDS)   <- IGYCRCTL OBJECT                              │
+│  ├─ BUILD.DBRM  (PDS)   <- DBRM (if SQL)                                │
+│  └─ BUILD.LOAD  (PDSE LIBRARY) <- IEWBLINK load module                  │
+│                                                                         │
+│ Compiler: IGY650.SIGYCOMP (COBOL 6.5.0) via TASKLIB                     │
+│           Found via LISTALC (not IGY.V6R4M0.SIGYCOMP)                   │
+│ Binder:   CEE.SCEELKED via TMP allocation                               │
+│           Found via LISTCAT LEVEL(CEE) (not CBC.V2R4M0.SCEELKED)        │
+│ Runtime:  CEE.SCEERUN, DSND10.SDSNLOAD (LINKLIST)                       │
+│                                                                         │
+│ Wazi Deploy 3.0.0 (/usr/lpp/IBM/gdp/)                                   │
 │  └─ wazideploy-package / wazideploy-deploy                              │
 └──────────────────────────────┬──────────────────────────────────────────┘
-                                │
+                               │
 GitHub Actions: DBB Build -> Package and Publish -> Deploy
-                                │
+                               │
 JFrog Artifactory: trialfh3rbr.jfrog.io
   mainframe-loads-local/core-banking-app/<version>/deployable.tar
-                                │
+                               │
 Promotion: Z78651.BUILD.LOAD -> Z78651.TEST.LOAD -> Z78651.PROD.LOAD
 ```
 

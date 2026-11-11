@@ -37,21 +37,16 @@ GitHub Artifacts are only a 30-day debug cache. JFrog Artifactory is the immutab
 
 ## Architecture
 
-```
-VS Code [Zowe Explorer + Z Open Editor 6.9.0]
-   |
-   +-- z/OSMF (REST) + SSH (zosmf / ssh profiles)
-   |
-z/OS USS: /z/z78651/work/workspace
-   |
-   +-- DBB Toolkit 2.0.2.7 (/usr/lpp/IBM/dbb/bin/groovyz)
-   +-- zAppBuild 3.14.0-BASE (/z/z78651/work/dbb-zappbuild/build.groovy)
-   +-- BUILD PDS: Z78651.BUILD.* (COBOL/COPY/OBJ/DBRM/LOAD)
-   |
-MVS: Batch Compile IGYCRCTL + IEWBLINK
-   |
-GitHub Actions -> JFrog Artifactory -> Wazi Deploy 3.0.0 -> Z78651.TEST.LOAD / Z78651.PROD.LOAD
-```
+![Mainframe Modernization Platform Architecture - DBB Build, Package and Publish, Deploy, JFrog, Wazi Deploy, USS](docs/architecture.png)
+
+> **How it works:** DBB Build → Package and Publish → Deploy. JFrog is source of truth.
+>
+> **About DBRM:** `ACCTBALA` is the VSAM example in this repo. The platform also supports DB2 COBOL programs — for DB2 programs, DBB produces a `DBRM` during precompile, which is then bound via `BIND` to a Plan / Package before the LOAD is deployed. Same DBB Build, same Wazi Deploy Method, no change to the pipeline.
+>
+> **About `<version>`:** `<version>` is a placeholder for the version produced by each successful build (e.g. `1.0.115`). It changes on every run. Deploy always downloads the *same* version from JFrog that Package published — it never rebuilds.
+>
+> Full proof with screenshots: [docs/EVIDENCE.md](docs/EVIDENCE.md)
+> Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 **Stack:** COBOL 6.5.0, VSAM KSDS, JCL, DBB 2.0.2.7, zAppBuild 3.14, Wazi Deploy 3.0.0, JFrog Artifactory, SonarQube, ZUnit, GitHub Actions
 
